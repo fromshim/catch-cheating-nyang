@@ -34,14 +34,14 @@ function playProctor() {
   mode?.stop();
   mode = startProctor({
     renderer, ui,
-    onEnd({ ending, state, complaint }) {
+    onEnd({ ending, state, risk, meltdowns, emptyInspects }) {
       const U = C.endingUi, e = C.endings[ending.id];
       const list = (a, f) => (a.length ? a.map(f).join(', ') : U.none);
       mode.stop(); mode = null;
       endScreen(`<h2>${e.title}</h2>${para(e.body)}
         ${ending.emp ? `<h3>${C.empPenalty.title}</h3><p>${C.empPenalty.body}</p>` : ''}
         <div class="stats"><h4>${U.stats}</h4>
-          <p>${U.caught} ${state.caught.length} · ${U.wrong} ${state.wrongCaught.length} · ${U.missed} ${state.missed.length} · ${U.complaintCount} ${Math.round(complaint)}%</p>
+          <p>${U.caught} ${state.caught.length} · ${U.wrong} ${state.wrongCaught.length} · ${U.missed} ${state.missed.length} · ${U.riskPct} ${Math.round(risk)}% · ${U.meltdownCount} ${meltdowns} · ${U.emptyCount} ${emptyInspects}</p>
           <p>${U.missedList}: ${list(state.missed, (m) => `${m.id}번(${C.deviceNames[m.device]})`)}</p></div>
         ${reality(e.realityCard)}`, playProctor);
     },

@@ -152,10 +152,14 @@ const SEAT_Y = -0.4; // 앉으면 몸 전체가 내려간다(엉덩이 높이 0.
 const REST = { rs: 0.5, re: 1.1, ls: 0.5, le: 1.1, rz: 0, lz: 0, hx: -0.3, hy: 0,
   rh: Math.PI / 2, lh: Math.PI / 2, rk: -Math.PI / 2, lk: -Math.PI / 2, by: SEAT_Y };
 
+const BLUSH = new THREE.Color(0xd8402e);
+
 export function createPerson(rand, { color, proctor = false } = {}) {
   const g = new THREE.Group();
   const cloth = mat(color ?? CLOTH[Math.floor(rand() * CLOTH.length)]);
   const skin = mat(SKIN[Math.floor(rand() * SKIN.length)]);
+  const skin0 = skin.color.clone();
+  skin.emissive.setHex(0);
   const pants = mat(proctor ? 0x2d2d33 : 0x4a4a52);
   const torso = box(0.5, 0.65, 0.28, cloth); torso.position.y = 1.12; g.add(torso);
 
@@ -193,6 +197,12 @@ export function createPerson(rand, { color, proctor = false } = {}) {
     walk: null,    // {pts, i, onDone}
     phase: rand() * 10,
     setGesture(name, now, dur) { p.gesture = { name, start: now, end: now + dur }; },
+    // 긴장 홍조: 머리 피부색을 원래 색에서 붉은색으로 보간(Color 재사용, 할당 없음)
+    setStress(v) {
+      const r = Math.max(0, Math.min(1, v / 100));
+      skin.color.copy(skin0).lerp(BLUSH, r);
+      skin.emissive.copy(BLUSH).multiplyScalar(0.25 * r);
+    },
     leave(pts, onDone) { p.gesture = null; p.walk = { pts, i: 0, onDone }; },
   };
   g.position.y = SEAT_Y;
@@ -240,6 +250,11 @@ export function animatePerson(p, now, dt) {
         case 'sleeve': Object.assign(tgt, { hy: 0.8, hx: -0.35, ls: 0.7, le: 1.6, lz: 0.2 }); break;
         case 'look': tgt.hy = Math.sin(k * 4) * 0.9; tgt.hx = 0; break;
         case 'stretch': Object.assign(tgt, { rs: 3.0, ls: 3.0, re: 0.1, le: 0.1, hx: 0.25 }); break;
+        case 'slump': { // 책상에 엎드려 흐느낌
+          const sob = Math.max(0, Math.sin(k * 7)) * Math.max(0, Math.sin(k * 0.9));
+          Object.assign(tgt, { hx: -1.1, hy: 0, rs: 1.4, ls: 1.4, re: 1.6, le: 1.6, by: SEAT_Y + sob * 0.03 });
+          break;
+        }
         case 'pen': tgt.re = 1.1 + Math.sin(k * 10) * 0.3; break;
         case 'spark': Object.assign(tgt, { rs: 1.5, ls: 1.5, re: 1.2, le: 1.2, hx: 0.3 }); jitter = 0.03; sparks = Math.random() > 0.3; break;
       }

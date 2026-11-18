@@ -51,16 +51,77 @@ export function assignExaminees(seed, n = 24) {
  *   missed: {id, device}[],                 // 놓친 부정행위자
  *   hearingDamaged: boolean,
  *   empCount: number,
+ *   parentRisk?: number,                    // 0~100 학부모 리스크 %
+ *   riskRoll?: number,                      // 0~1 주사위. riskRoll < parentRisk/100 이면 고소
  * }
- * 반환: { id: 'lawsuit'|'medical'|'topscorer'|'perfect'|'complaint', emp: boolean }
+ * 반환: { id: 'lawsuit'|'medical'|'lawsuit_risk'|'topscorer'|'perfect'|'complaint', emp: boolean }
  */
 export function evaluateEnding(state) {
   const emp = state.empCount >= 2;
   let id;
   if (state.wrongCaught.some((w) => w.type === 'distracted')) id = 'lawsuit';
   else if (state.hearingDamaged) id = 'medical';
+  else if (state.parentRisk !== undefined && state.riskRoll !== undefined && state.riskRoll < state.parentRisk / 100) id = 'lawsuit_risk';
   else if (state.missed.length > 0) id = 'topscorer';
   else if (state.wrongCaught.length === 0) id = 'perfect';
   else id = 'complaint'; // 지시서 4종 밖: 전부 잡았지만 평범한 수험생을 오적발한 경우
   return { id, emp };
 }
+
+export const TUNE = {
+  inspectCooldown: 5, // 검사(E) 쿨타임 초
+  // 개인 긴장(stress) 0~100
+  stressEmptyInspect: 35,
+  stressNeighbor: 10,
+  neighborDist: 2.0,
+  stressProximityRate: 3,
+  proximityDist: 1.5,
+  stressEmp: 20,
+  stressDecay: 0.8,
+  meltdownAt: 100,
+  // 교실 경계도(heat) 0~100
+  heatInspect: 15, heatArrest: 30, heatEmp: 60, heatDecay: 1.5,
+  calmBelow: 20,
+  boldAfter: 25,
+  boldRamp: 30,
+  // 범인 부정행위 진척
+  cheatBaseRate: 100 / 120,
+  // 학부모 리스크 가중치
+  riskEmptyInspect: 8, riskMeltdown: 20, riskWrongArrest: 15,
+};
+
+const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+
+// 개인 긴장 한 프레임 갱신. proctorDist = 감독관과의 수평 거리(m).
+export function stressStep(stress, { proctorDist, dt }) {
+  const up = proctorDist <= TUNE.proximityDist ? TUNE.stressProximityRate : 0;
+  return clamp(stress + (up - TUNE.stressDecay) * dt, 0, 100);
+}
+
+export function stressLevel(stress) {
+  if (stress >= 100) return 'meltdown';
+  if (stress >= 60) return 'high';
+  if (stress >= 30) return 'tense';
+  return 'calm';
+}
+
+export const heatStep = (heat, dt) => Math.max(0, heat - TUNE.heatDecay * dt);
+
+export const calmStep = (calmTime, heat, dt) => (heat < TUNE.calmBelow ? calmTime + dt : 0);
+
+// 범인 배율 {tell, progress}. 대담해지면 heat 배율 대신 대담 배율을 쓴다.
+export function cheaterMul(heat, calmTime) {
+  let m;
+  if (calmTime > TUNE.boldAfter) m = 1 + Math.min(1, (calmTime - TUNE.boldAfter) / TUNE.boldRamp);
+  else m = 1 - 0.6 * Math.min(1, heat / 50);
+  return { tell: m, progress: m };
+}
+
+export const innocentTellMul = (stress) => Math.min(3, 1 + stress / 50);
+
+export const parentRisk = ({ emptyInspects, meltdowns, wrongArrests }) =>
+  clamp(
+    emptyInspects * TUNE.riskEmptyInspect + meltdowns * TUNE.riskMeltdown + wrongArrests * TUNE.riskWrongArrest,
+    0,
+    100,
+  );
