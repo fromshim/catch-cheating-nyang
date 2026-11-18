@@ -56,12 +56,11 @@ export function startProctor({ renderer, ui, onEnd }) {
   });
 
   const seenDev = new Set();
-  const state = { caught: [], wrongCaught: [], missed: [], hearingDamaged: false, empCount: 0, released: [], directive: null, directiveCount: 0 };
+  const state = { caught: [], wrongCaught: [], missed: [], hearingDamaged: false, empCount: 0, released: [] };
   let t = 0, timeLeft = Number(new URLSearchParams(location.search).get("t")) || 180, // 개발용: ?t=5 로 시험 시간 단축
     emp = 0, flick = 0, inspectT = 0, inspectId = null;
   let heat = 0, calmTime = 0, emptyInspects = 0, meltdowns = 0, inspectCd = 0, boldFired = false;
-  const T0 = timeLeft, glassesChecked = new Set();
-  let dStage = 0, dEnd = 0, bannerOff = 0;
+  const T0 = timeLeft;
   let ringKey = '', stkKey = '', dialKey = '', whisperE = null, overTimer = 0, risk = 0, pulse = 0, aimKey = '', aimPrev = null, lastTick = 0, lastJ = null;
   const totalCheaters = ex.filter((e) => e.type === 'cheater').length;
   const riskOf = () => parentRisk({ emptyInspects, meltdowns, wrongArrests: state.wrongCaught.length });
@@ -80,7 +79,6 @@ export function startProctor({ renderer, ui, onEnd }) {
     <div class="hud proctor">
       <div class="vignette" id="p-vig"></div><div class="emp-flash" id="p-flash"></div>
       <div class="hud-center"><b id="p-time">${Math.floor(timeLeft / 60)}:${String(Math.floor(timeLeft % 60)).padStart(2, '0')}</b><span id="p-counts"></span></div>
-      <div id="p-banner" class="banner" hidden></div>
       <div class="gauges">
         <div class="g" id="p-g-risk"><div class="row"><span id="p-stk"></span><span class="num" id="p-risk-n">0</span></div><label>${P.risk}</label><b class="up" id="p-pl-risk"></b></div>
         <div class="g" id="p-g-heat"><div class="row col"><span id="p-dial"></span><span class="st" id="p-heat-n"></span></div><label>${P.heat}</label><b class="up" id="p-pl-heat"></b></div>
@@ -223,14 +221,6 @@ export function startProctor({ renderer, ui, onEnd }) {
   // 관찰 카드 둘째 줄(목격 안내). kind: real(신호색 점) · like(닮은꼴) · emp. until: 사라지는 시각
   const witness = (e, text, kind, until, sig) => { e.wit = { text, kind, until, sig }; };
 
-  const banner = (text, withdraw) => {
-    const b = $('p-banner'); b.hidden = false; b.classList.toggle('withdraw', !!withdraw);
-    b.innerHTML = withdraw
-      ? `<p class="old"><s>${P.directive.start}</s></p><span class="stamp">${P.stamp.correction}</span><p>${text}</p>`
-      : `<p>${text}</p>`;
-    restart(b, 'drop');
-    withdraw ? audio.stamp() : audio.chime();
-  };
   const dir = new THREE.Vector3(), v = new THREE.Vector3();
   // 화면 중앙에 가장 가깝게 걸린 수험생(거리 maxDist 안)
   // 검사·적발 대상은 조준 라벨이 가리키는 바로 그 학생이고, 2m 안이어야 한다
@@ -389,9 +379,6 @@ export function startProctor({ renderer, ui, onEnd }) {
   function inspect(e) {
     inspectCd = TUNE.inspectCooldown;
     const n = stirNeighbors(e), h = addHeat(TUNE.heatInspect);
-    if (dStage === 1 && e.glasses) {
-      glassesChecked.add(e.id); state.directive = 'followed'; state.directiveCount = glassesChecked.size;
-    }
     if (e.type === 'cheater' && rand() < inspectChance(e.device, t - (e.lastSight ?? -Infinity))) {
       e.found = true; e.inspected = 'found';
       arrest(e, P.cap.found(e.id, C.deviceNames[e.device])); // 검사 성공 = 자동 검거(증거 hard)
@@ -530,14 +517,6 @@ export function startProctor({ renderer, ui, onEnd }) {
     if (calmTime > TUNE.boldAfter && !boldFired) { boldFired = true; cap(P.cap.bold); }
     else if (calmTime === 0) boldFired = false;
 
-    // 시험 중 지침 번복 방송
-    if (dStage === 0 && t >= T0 * TUNE.directiveAt) {
-      dStage = 1; dEnd = t + TUNE.directiveDur; state.directive = 'ignored';
-      banner(P.directive.start); cap(P.directive.start);
-    } else if (dStage === 1 && t >= dEnd) {
-      dStage = 2; banner(P.directive.withdraw, true); cap(P.directive.withdraw); bannerOff = t + 8;
-    }
-    if (bannerOff && t >= bannerOff) { bannerOff = 0; $('p-banner').hidden = true; }
 
     // 소지품 검사: E 홀드 (쿨타임 중엔 불가)
     inspectCd = Math.max(0, inspectCd - dt);

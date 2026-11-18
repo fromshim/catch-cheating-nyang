@@ -143,8 +143,6 @@ export const TUNE = {
   lookalikeDur: 1.2,
   releaseByEvidence: { hard: 0, soft: 0.2, none: 0.5 }, // 증거 수준별 석방 확률
   nervousSignAt: 30,
-  directiveAt: 0.5, // 전체 시험 시간 대비 지침 방송 시점 비율
-  directiveDur: 30, // 지침 철회까지 초
   copyThreshold: 60, // 이 이상 베끼면 topscorer
   // 범인 부정행위 진척
   cheatBaseRate: 100 / 120,

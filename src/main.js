@@ -91,7 +91,7 @@ function playProctor() {
           (ending.emp ? `<h3>${C.empPenalty.title}</h3><p>${C.empPenalty.body}</p>` : ''),
         stats: grid([[U.caught, state.caught.length], [U.wrong, state.wrongCaught.length], [U.missed, state.missed.length],
           [U.riskPct, `${Math.round(risk)}%`], [U.meltdownCount, meltdowns], [U.emptyCount, emptyInspects]]) +
-          `<div class="more"><p>${U.released(state.released.length)}${state.directive ? ` · ${state.directive === 'followed' ? U.directiveFollowed(state.directiveCount) : U.directiveIgnored}` : ''}</p>
+          `<div class="more"><p>${U.released(state.released.length)}</p>
           <p>${U.probTitle}: ${Object.entries(INSPECT_PROB).map(([d, p]) => `${C.deviceNames[d]} ${Math.round(p * 100)}%`).join(' · ')} (${U.probNote})</p>
           <p>${U.missedList}: ${list(state.missed, (m) => `${m.id}번(${C.deviceNames[m.device]})`)}</p></div>`,
         card: reality(e.realityCard),

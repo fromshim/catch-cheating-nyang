@@ -82,7 +82,7 @@ export const C = {
       meltdown: ['엄..........'],
     },
     actHint: { inspect: '검사', arrest: '적발', cool: (s) => `검사 ${s}초 뒤` },
-    stamp: { correction: '정정', caught: '검거', wrong: '오적발' },
+    stamp: { caught: '검거', wrong: '오적발' },
     mini: { esc: '도감', q: 'EMP', e: '검사', f: '적발', used: 'EMP 사용' },
     risk: '학부모 리스크',
     heat: '교실 경계도',
@@ -162,10 +162,6 @@ export const C = {
         tense: ['학생 긴장', '붉을수록 멘붕이 가깝다'],
         lv: { risk: ['20', '60', '95'], heat: ['조용 22초', '검사 직후', 'EMP 직후'], emp: ['충전 중', 'Q로 발사'] },
       },
-    },
-    directive: {
-      start: `[${ORG} 긴급 지침] 안경 착용 수험생 전원 소지품 검사 실시`,
-      withdraw: `[${ORG}] "해당 지침은 검토한 바 없음"`,
     },
     ticker: [
       `${EXAM_SHORT} 전국 수석, 영상 올려 "AI로 풀었다" 자수... 경찰 수사 착수`,
@@ -288,8 +284,6 @@ export const C = {
     meltdownCount: '멘붕',
     emptyCount: '증거 못 찾은 검사',
     released: (n) => `증거 불충분 석방 ${n}명`,
-    directiveFollowed: (n) => `지침 이행: 안경 쓴 수험생 ${n}명 검사 → 지침은 철회됨`,
-    directiveIgnored: '지침 불이행 기록됨',
     wrongLine: (n) => (n ? `오적발로 내보낸 수험생은 ${n}명이었다.` : '오적발은 없었지만 빈 가방 검사에 대한 항의가 쌓였다.'),
     meltdownLine: (n) => (n ? `멘붕한 수험생은 ${n}명이었다.` : '멘붕한 수험생은 없었다.'),
     probTitle: '소지품 검사 발견 확률',
