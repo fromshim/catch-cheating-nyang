@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
 import { buildClassroom, seatExaminees, animatePerson, seatPos, exitPath, autoResize, ROOM } from './scene.js';
-import { assignExaminees, evaluateEnding, inspectFound, isElectronic, mulberry32, TUNE, stressStep, stressLevel, heatStep, calmStep, cheaterMul, innocentTellMul, parentRisk } from './logic.js';
+import { assignExaminees, evaluateEnding, inspectFound, isElectronic, mulberry32, TUNE, stressStep, stressLevel, heatStep, calmStep, cheaterMul, innocentTellMul, parentRisk, nervousSignProb, releaseNoEvidence } from './logic.js';
 import { C } from './content.js';
 
 const P = C.proctor;
@@ -9,6 +9,7 @@ const SIGNS_BY = {
   paper: ['sleeve'], watch: ['wrist'], earbud: ['ear', 'lips'], camai: ['freeze'], glasses: ['glint'],
 };
 const SIGN_DUR = { freeze: 4, glint: 2.5, look: 2, spark: 3 };
+const NERVOUS = ['look', 'ear', 'freeze', 'lips', 'sleeve'];
 const pick = (r, a) => a[Math.floor(r() * a.length)];
 
 export function startProctor({ renderer, ui, onEnd }) {
@@ -25,18 +26,20 @@ export function startProctor({ renderer, ui, onEnd }) {
   const ex = assignExaminees(seed).map((e, i) => {
     const person = people[i];
     const s = seatPos(i);
-    if (e.device === 'glasses') person.glasses.visible = true;
+    person.glasses.visible = e.glasses;
     return {
       ...e, i, person, removed: false, seen: 0, found: false, empFlag: false,
-      stress: 0, meltdown: false, progress: 0, done: false, inspected: null,
+      stress: 0, dwell: 0, meltdown: false, progress: 0, done: false, inspected: null,
       pos: new THREE.Vector3(s.x, 1.25, s.z), next: 2 + rand() * 6,
     };
   });
 
-  const state = { caught: [], wrongCaught: [], missed: [], hearingDamaged: false, empCount: 0 };
+  const state = { caught: [], wrongCaught: [], missed: [], hearingDamaged: false, empCount: 0, released: [], directive: null, directiveCount: 0 };
   let t = 0, timeLeft = Number(new URLSearchParams(location.search).get("t")) || 180, // 개발용: ?t=5 로 시험 시간 단축
     emp = 0, flick = 0, inspectT = 0, inspectId = null;
   let heat = 0, calmTime = 0, emptyInspects = 0, meltdowns = 0, inspectCd = 0, boldFired = false;
+  const T0 = timeLeft, glassesChecked = new Set();
+  let dStage = 0, dEnd = 0, bannerOff = 0;
   let risk = 0, pulse = 0, aimKey = '';
   const totalCheaters = ex.filter((e) => e.type === 'cheater').length;
   const riskOf = () => parentRisk({ emptyInspects, meltdowns, wrongArrests: state.wrongCaught.length });
@@ -48,6 +51,7 @@ export function startProctor({ renderer, ui, onEnd }) {
     <div class="hud proctor">
       <div class="vignette" id="p-vig"></div>
       <div class="hud-center"><b id="p-time">0:00</b><span id="p-counts"></span></div>
+      <div id="p-banner" class="banner" hidden></div>
       <div class="gauges">
         <div class="gauge"><label id="p-emp-l">${P.emp}</label><i><u id="p-emp"></u></i></div>
         <div class="gauge warn" id="p-g-risk"><label>${P.risk} <b id="p-risk-n">0%</b><em id="p-pl-risk"></em></label><i><u id="p-risk"></u></i></div>
@@ -113,6 +117,9 @@ export function startProctor({ renderer, ui, onEnd }) {
     while (logEl.children.length > 12) logEl.lastChild.remove();
   };
 
+  const banner = (text, withdraw) => {
+    const b = $('p-banner'); b.textContent = text; b.hidden = false; b.classList.toggle('withdraw', !!withdraw);
+  };
   const dir = new THREE.Vector3(), v = new THREE.Vector3();
   // 화면 중앙에 가장 가깝게 걸린 수험생(거리 maxDist 안)
   // 검사·적발 대상은 조준 라벨이 가리키는 바로 그 학생이고, 2m 안이어야 한다
@@ -133,11 +140,12 @@ export function startProctor({ renderer, ui, onEnd }) {
 
   function sign(e, name) {
     e.person.setGesture(name, t, SIGN_DUR[name] ?? 1.6);
-    if (aimed(8) === e) {
-      const s = P.signs[name];
-      if (s.sus) e.seen++;
-      journal(e.id, s.text);
-    }
+    if (aimed(8) !== e) return;
+    // 멀리서는 무슨 징후인지 안 보인다
+    if (camera.position.distanceTo(e.pos) > TUNE.signDetailDist) return journal(e.id, P.signs.far.text);
+    const s = P.signs[name];
+    if (s.sus) e.seen++;
+    journal(e.id, s.text);
   }
   function schedule(e) {
     let names, lo, hi, div;
@@ -150,9 +158,14 @@ export function startProctor({ renderer, ui, onEnd }) {
       if (e.type === 'distracted') { names = ['look', 'ear', 'wrist']; lo = 3; hi = 7; }
       else if (e.type === 'hearing') { names = ['ear']; lo = 10; hi = 18; }
       else { names = ['stretch', 'pen']; lo = 10; hi = 22; }
+      // 안경 쓴 무고도 가끔 렌즈가 반짝여 안경 불빛만으론 범인을 못 가린다
+      if (e.glasses && rand() < 0.2) names = ['glint'];
     }
     e.next = t + (lo + rand() * (hi - lo)) / div;
-    sign(e, pick(rand, names));
+    let name = pick(rand, names);
+    // 긴장한 학생은 타입 무관하게 수상한 몸짓을 섞는다
+    if (rand() < nervousSignProb(e.stress)) name = pick(rand, e.glasses ? [...NERVOUS, 'glint'] : NERVOUS);
+    sign(e, name);
   }
 
   function remove(e) {
@@ -176,7 +189,7 @@ export function startProctor({ renderer, ui, onEnd }) {
     if (e.type === 'cheater') {
       state.caught.push(e.id);
       emp = Math.min(100, emp + 25);
-      cap(P.cap.caughtRight(e.id, addHeat(TUNE.heatArrest), n));
+      cap(P.cap.caughtRight(e.id, addHeat(TUNE.heatArrest), n, e.found || e.empFlag));
     } else {
       state.wrongCaught.push({ id: e.id, type: e.type });
       const h = addHeat(TUNE.heatArrest);
@@ -188,6 +201,9 @@ export function startProctor({ renderer, ui, onEnd }) {
   function inspect(e) {
     inspectCd = TUNE.inspectCooldown;
     const n = stirNeighbors(e), h = addHeat(TUNE.heatInspect);
+    if (dStage === 1 && e.glasses) {
+      glassesChecked.add(e.id); state.directive = 'followed'; state.directiveCount = glassesChecked.size;
+    }
     if (e.type === 'cheater' && inspectFound(e.device, rand())) {
       e.found = true; e.inspected = 'found';
       cap(P.cap.found(e.id, C.deviceNames[e.device], h, n));
@@ -203,13 +219,14 @@ export function startProctor({ renderer, ui, onEnd }) {
     emp = 0; state.empCount++; flick = 1.2;
     $('p-audit').textContent = state.empCount;
     let hit = 0, n = 0;
+    const target = aimed(8);
     for (const e of ex) {
       if (e.removed) continue;
-      if (Math.hypot(e.pos.x - camera.position.x, e.pos.z - camera.position.z) > 10) continue;
+      if (Math.hypot(e.pos.x - camera.position.x, e.pos.z - camera.position.z) > TUNE.empRadius) continue;
       e.stress = Math.min(100, e.stress + TUNE.stressEmp); n++;
       if (e.type === 'cheater' && isElectronic(e.device)) {
-        e.person.setGesture('spark', t, 3); e.seen++; e.empFlag = true; hit++;
-        journal(e.id, P.signs.emp.text);
+        e.person.setGesture('spark', t, 3); e.empFlag = true; hit++;
+        if (target === e) { e.seen++; journal(e.id, P.signs.emp.text); }
       } else if (e.type === 'hearing') state.hearingDamaged = true;
     }
     cap(P.cap.emp(state.hearingDamaged ? 'hearing' : hit ? 'hit' : 'none', addHeat(TUNE.heatEmp), n));
@@ -227,7 +244,12 @@ export function startProctor({ renderer, ui, onEnd }) {
   function finish() {
     ended = true; running = false;
     controls.unlock();
-    state.missed = ex.filter((e) => e.type === 'cheater' && !state.caught.includes(e.id)).map((e) => ({ id: e.id, device: e.device }));
+    // 증거 없이 잡은 범인은 시험 후 석방될 수 있다
+    const { released } = releaseNoEvidence(
+      ex.filter((e) => state.caught.includes(e.id)).map((e) => ({ id: e.id, evidence: e.found || e.empFlag })), rand);
+    state.released = released;
+    state.caught = state.caught.filter((id) => !released.includes(id));
+    state.missed = ex.filter((e) => e.type === 'cheater' && !state.caught.includes(e.id)).map((e) => ({ id: e.id, device: e.device, progress: Math.round(e.progress) }));
     state.parentRisk = risk; state.riskRoll = rand();
     onEnd({ ending: evaluateEnding(state), state, risk, meltdowns, emptyInspects });
   }
@@ -257,7 +279,9 @@ export function startProctor({ renderer, ui, onEnd }) {
     for (const e of ex) {
       if (e.removed) continue;
       if (!e.meltdown) {
-        e.stress = stressStep(e.stress, { proctorDist: Math.hypot(e.pos.x - camera.position.x, e.pos.z - camera.position.z), dt });
+        const dist = Math.hypot(e.pos.x - camera.position.x, e.pos.z - camera.position.z);
+        e.dwell = dist <= TUNE.proximityDist ? e.dwell + dt : 0;
+        e.stress = stressStep(e.stress, { proctorDist: e.dwell >= TUNE.proximityDwell ? dist : Infinity, dt });
         if (e.stress >= TUNE.meltdownAt) {
           e.meltdown = true; meltdowns++;
           e.person.setGesture('slump', t, 9999);
@@ -272,6 +296,15 @@ export function startProctor({ renderer, ui, onEnd }) {
     heat = heatStep(heat, dt); calmTime = calmStep(calmTime, heat, dt);
     if (calmTime > TUNE.boldAfter && !boldFired) { boldFired = true; cap(P.cap.bold); }
     else if (calmTime === 0) boldFired = false;
+
+    // 시험 중 지침 번복 방송
+    if (dStage === 0 && t >= T0 * TUNE.directiveAt) {
+      dStage = 1; dEnd = t + TUNE.directiveDur; state.directive = 'ignored';
+      banner(P.directive.start); cap(P.directive.start);
+    } else if (dStage === 1 && t >= dEnd) {
+      dStage = 2; banner(P.directive.withdraw, true); cap(P.directive.withdraw); bannerOff = t + 8;
+    }
+    if (bannerOff && t >= bannerOff) { bannerOff = 0; $('p-banner').hidden = true; }
 
     // 소지품 검사: E 홀드 2초 (쿨타임 중엔 불가)
     inspectCd = Math.max(0, inspectCd - dt);
@@ -294,8 +327,8 @@ export function startProctor({ renderer, ui, onEnd }) {
       aim.style.top = ((1 - v.y) / 2) * innerHeight + 'px';
       // 3m 안이면 확장 카드. 정체(범인 여부)는 절대 싣지 않는다
       const key = camera.position.distanceTo(a.pos) <= 3
-        ? P.aimCard(a.id, P.levels[a.meltdown ? 'meltdown' : stressLevel(a.stress)], a.seen, P.inspected[a.inspected ?? 'none'])
-        : P.aimLabel(a.id, a.seen) + (a.found ? ` · ${P.foundTag}` : '');
+        ? P.aimCard(a.id, P.levels[a.meltdown ? 'meltdown' : stressLevel(a.stress)], a.seen, P.inspected[a.inspected === 'found' ? 'found' : a.empFlag ? 'emp' : a.inspected ?? 'none'])
+        : P.aimLabel(a.id, a.seen) + (a.found ? ` · ${P.foundTag}` : a.empFlag ? ` · ${P.inspected.emp}` : '');
       if (key !== aimKey) { aimKey = key; aim.innerHTML = key; }
     } else aim.hidden = true;
 

@@ -2,6 +2,7 @@ import './style.css';
 import { C } from './content.js';
 import { makeRenderer } from './scene.js';
 import { startProctor } from './proctor.js';
+import { INSPECT_PROB } from './logic.js';
 import { startExaminee } from './examinee.js';
 
 const ui = document.getElementById('ui');
@@ -38,10 +39,12 @@ function playProctor() {
       const U = C.endingUi, e = C.endings[ending.id];
       const list = (a, f) => (a.length ? a.map(f).join(', ') : U.none);
       mode.stop(); mode = null;
-      endScreen(`<h2>${e.title}</h2>${para(e.body)}
+      endScreen(`<h2>${e.title}</h2>${para(e.body).replace('{meltdownLine}', U.meltdownLine(meltdowns))}
         ${ending.emp ? `<h3>${C.empPenalty.title}</h3><p>${C.empPenalty.body}</p>` : ''}
         <div class="stats"><h4>${U.stats}</h4>
           <p>${U.caught} ${state.caught.length} · ${U.wrong} ${state.wrongCaught.length} · ${U.missed} ${state.missed.length} · ${U.riskPct} ${Math.round(risk)}% · ${U.meltdownCount} ${meltdowns} · ${U.emptyCount} ${emptyInspects}</p>
+          <p>${U.released(state.released.length)}${state.directive ? ` · ${state.directive === 'followed' ? U.directiveFollowed(state.directiveCount) : U.directiveIgnored}` : ''}</p>
+          <p>${U.probTitle}: ${Object.entries(INSPECT_PROB).map(([d, p]) => `${C.deviceNames[d]} ${Math.round(p * 100)}%`).join(' · ')} (${U.probNote})</p>
           <p>${U.missedList}: ${list(state.missed, (m) => `${m.id}번(${C.deviceNames[m.device]})`)}</p></div>
         ${reality(e.realityCard)}`, playProctor);
     },

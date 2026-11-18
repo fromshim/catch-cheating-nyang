@@ -80,3 +80,5 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .keys li.cool kbd { color: #efe6d244; border-color: #8a775355; }
 .keys .cd { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 15px; color: #e8d36a; text-shadow: 0 1px 2px #000; }
 .aim b { font-size: 14px; }
+.banner { position: absolute; top: 92px; left: 50%; transform: translateX(-50%); max-width: 80vw; padding: 8px 18px; background: #b3261e; border: 2px solid #ffd9a0; border-radius: 6px; font-weight: 700; font-size: 17px; text-align: center; text-shadow: 0 1px 3px #000; animation: capin 0.25s ease-out; }
+.banner.withdraw { background: #3d4a5a; border-color: #9fb3c8; }

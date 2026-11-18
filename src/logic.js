@@ -22,6 +22,7 @@ export const inspectFound = (device, roll) => roll < (INSPECT_PROB[device] ?? 0)
  * 수험생 배정. 반환: 길이 n 배열, 인덱스 i = 책상 i, id = i + 1.
  * type: 'cheater' | 'distracted' | 'hearing' | 'normal'
  * 규칙: 부정행위자 3~4, 산만한 무고 2~3, 보청기 0~1.
+ * glasses: 안경 착용 여부. device==='glasses' 범인은 true, 그 외 비범인 5~6명도 true(정체 누출 방지).
  */
 export function assignExaminees(seed, n = 24) {
   const r = mulberry32(seed);
@@ -33,14 +34,24 @@ export function assignExaminees(seed, n = 24) {
     const j = Math.floor(r() * (i + 1));
     [order[i], order[j]] = [order[j], order[i]];
   }
-  const list = Array.from({ length: n }, (_, i) => ({ id: i + 1, type: 'normal', device: null }));
+  const list = Array.from({ length: n }, (_, i) => ({ id: i + 1, type: 'normal', device: null, glasses: false }));
   let k = 0;
   for (let c = 0; c < nCheat; c++) {
     const idx = order[k++];
-    list[idx] = { id: idx + 1, type: 'cheater', device: DEVICES[Math.floor(r() * DEVICES.length)] };
+    const device = DEVICES[Math.floor(r() * DEVICES.length)];
+    list[idx] = { id: idx + 1, type: 'cheater', device };
+    list[idx].glasses = device === 'glasses';
   }
   for (let c = 0; c < nDistract; c++) list[order[k++]].type = 'distracted';
   for (let c = 0; c < nHearing; c++) list[order[k++]].type = 'hearing';
+  // 안경 낀 무고: 범인이 아닌 학생 중 5~6명 (기존 난수 소비 뒤에 뽑아 기존 배정은 그대로)
+  const nGlasses = 5 + Math.floor(r() * 2);
+  const pool = list.filter((e) => e.type !== 'cheater');
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(r() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  for (let c = 0; c < nGlasses; c++) pool[c].glasses = true;
   return list;
 }
 
@@ -48,21 +59,25 @@ export function assignExaminees(seed, n = 24) {
  * state: {
  *   caught: number[],                       // 맞게 적발한 번호
  *   wrongCaught: {id, type}[],              // 오적발
- *   missed: {id, device}[],                 // 놓친 부정행위자
+ *   missed: {id, device, progress?}[],      // 놓친 부정행위자. progress 0~100 = 베낀 진척
+ *                                           //   전부 copyThreshold 미만이면 'stalemate', 하나라도 이상이거나 없으면 'topscorer'
  *   hearingDamaged: boolean,
  *   empCount: number,
- *   parentRisk?: number,                    // 0~100 학부모 리스크 %
+ *   parentRisk?: number,                    // 0~100 학부모 리스크 %. riskSafeBelow 미만이면 고소 판정 없음
  *   riskRoll?: number,                      // 0~1 주사위. riskRoll < parentRisk/100 이면 고소
  * }
- * 반환: { id: 'lawsuit'|'medical'|'lawsuit_risk'|'topscorer'|'perfect'|'complaint', emp: boolean }
+ * 반환: { id: 'lawsuit'|'medical'|'lawsuit_risk'|'stalemate'|'topscorer'|'perfect'|'complaint', emp: boolean }
  */
 export function evaluateEnding(state) {
   const emp = state.empCount >= 2;
   let id;
   if (state.wrongCaught.some((w) => w.type === 'distracted')) id = 'lawsuit';
   else if (state.hearingDamaged) id = 'medical';
-  else if (state.parentRisk !== undefined && state.riskRoll !== undefined && state.riskRoll < state.parentRisk / 100) id = 'lawsuit_risk';
-  else if (state.missed.length > 0) id = 'topscorer';
+  else if (state.parentRisk !== undefined && state.parentRisk >= TUNE.riskSafeBelow && state.riskRoll !== undefined && state.riskRoll < state.parentRisk / 100) id = 'lawsuit_risk';
+  else if (state.missed.length > 0) {
+    const stale = state.missed.every((m) => typeof m.progress === 'number' && m.progress < TUNE.copyThreshold);
+    id = stale ? 'stalemate' : 'topscorer';
+  }
   else if (state.wrongCaught.length === 0) id = 'perfect';
   else id = 'complaint'; // 지시서 4종 밖: 전부 잡았지만 평범한 수험생을 오적발한 경우
   return { id, emp };
@@ -73,21 +88,31 @@ export const TUNE = {
   // 개인 긴장(stress) 0~100
   stressEmptyInspect: 35,
   stressNeighbor: 10,
-  neighborDist: 2.0,
+  neighborDist: 2.4,
   stressProximityRate: 3,
   proximityDist: 1.5,
   stressEmp: 20,
   stressDecay: 0.8,
   meltdownAt: 100,
   // 교실 경계도(heat) 0~100
-  heatInspect: 15, heatArrest: 30, heatEmp: 60, heatDecay: 1.5,
+  heatInspect: 25, heatArrest: 30, heatEmp: 60, heatDecay: 1.0,
   calmBelow: 20,
-  boldAfter: 25,
-  boldRamp: 30,
+  boldAfter: 15,
+  boldRamp: 20,
+  boldMax: 1.6, // 대담 배율 상한
+  proximityDwell: 3, // 근접 긴장은 이 시간(초) 이상 머문 뒤부터 (판정은 proctor)
+  empRadius: 4,
+  signDetailDist: 3, // 이보다 멀면 징후 종류가 안 보임
+  releaseNoEvidence: 0.5, // 증거 없이 잡힌 범인이 석방될 확률
+  nervousSignAt: 30,
+  directiveAt: 0.5, // 전체 시험 시간 대비 지침 방송 시점 비율
+  directiveDur: 30, // 지침 철회까지 초
+  copyThreshold: 60, // 이 이상 베끼면 topscorer
   // 범인 부정행위 진척
   cheatBaseRate: 100 / 120,
   // 학부모 리스크 가중치
-  riskEmptyInspect: 8, riskMeltdown: 20, riskWrongArrest: 15,
+  riskEmptyInspect: 8, riskMeltdown: 20, riskWrongArrest: 25,
+  riskSafeBelow: 15, // 이 미만이면 고소 판정 없음
 };
 
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
@@ -112,7 +137,7 @@ export const calmStep = (calmTime, heat, dt) => (heat < TUNE.calmBelow ? calmTim
 // 범인 배율 {tell, progress}. 대담해지면 heat 배율 대신 대담 배율을 쓴다.
 export function cheaterMul(heat, calmTime) {
   let m;
-  if (calmTime > TUNE.boldAfter) m = 1 + Math.min(1, (calmTime - TUNE.boldAfter) / TUNE.boldRamp);
+  if (calmTime > TUNE.boldAfter) m = 1 + (TUNE.boldMax - 1) * Math.min(1, (calmTime - TUNE.boldAfter) / TUNE.boldRamp);
   else m = 1 - 0.6 * Math.min(1, heat / 50);
   return { tell: m, progress: m };
 }
@@ -125,3 +150,14 @@ export const parentRisk = ({ emptyInspects, meltdowns, wrongArrests }) =>
     0,
     100,
   );
+
+// 긴장한 학생은 범인이든 무고든 같은 확률로 수상한 몸짓을 섞는다(정체 누출 방지)
+export const nervousSignProb = (stress) => (stress < TUNE.nervousSignAt ? 0 : Math.min(0.6, stress / 150));
+
+// arrests: [{id, evidence}] 맞게 잡은 범인. 증거 없는 건 확률로 석방. 증거 있으면 절대 석방 안 함.
+export function releaseNoEvidence(arrests, rand) {
+  const kept = [];
+  const released = [];
+  for (const a of arrests) (!a.evidence && rand() < TUNE.releaseNoEvidence ? released : kept).push(a.id);
+  return { kept, released };
+}

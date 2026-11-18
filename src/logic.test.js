@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   assignExaminees, evaluateEnding, DEVICES,
   stressStep, stressLevel, heatStep, calmStep, cheaterMul, innocentTellMul, parentRisk,
+  nervousSignProb, releaseNoEvidence, TUNE,
 } from './logic.js';
 
 test('수험생 배정 수가 규칙대로다', () => {
@@ -14,6 +15,9 @@ test('수험생 배정 수가 규칙대로다', () => {
     assert.ok(n('cheater') >= 3 && n('cheater') <= 4);
     assert.ok(n('distracted') >= 2 && n('distracted') <= 3);
     assert.ok(n('hearing') <= 1);
+    const g = list.filter((e) => e.glasses && e.type !== 'cheater').length;
+    assert.ok(g >= 5 && g <= 6);
+    for (const e of list) if (e.device === 'glasses') assert.equal(e.glasses, true);
     for (const e of list) assert.equal(e.type === 'cheater', DEVICES.includes(e.device));
   }
   assert.deepEqual(assignExaminees(7), assignExaminees(7));
@@ -56,7 +60,7 @@ test('stressLevel 경계', () => {
 });
 
 test('heatStep·calmStep', () => {
-  near(heatStep(10, 2), 7);
+  near(heatStep(10, 2), 8);
   assert.equal(heatStep(1, 2), 0);
   assert.equal(calmStep(3, 19.9, 1), 4);
   assert.equal(calmStep(3, 20, 1), 0);
@@ -67,10 +71,10 @@ test('cheaterMul heat 구간과 대담 구간', () => {
   near(cheaterMul(25, 0).progress, 0.7);
   near(cheaterMul(50, 0).tell, 0.4);
   near(cheaterMul(80, 0).progress, 0.4);
-  near(cheaterMul(0, 25).tell, 1); // 경계: 초과해야 대담
-  near(cheaterMul(0, 40).tell, 1.5);
-  near(cheaterMul(0, 55).progress, 2);
-  near(cheaterMul(0, 200).tell, 2);
+    near(cheaterMul(0, 15).tell, 1); // 경계: 초과해야 대담
+  near(cheaterMul(0, 25).tell, 1.3);
+  near(cheaterMul(0, 35).progress, 1.6);
+  near(cheaterMul(0, 200).tell, 1.6);
 });
 
 test('innocentTellMul', () => {
@@ -82,7 +86,7 @@ test('innocentTellMul', () => {
 
 test('parentRisk 가중치와 클램프', () => {
   assert.equal(parentRisk({ emptyInspects: 0, meltdowns: 0, wrongArrests: 0 }), 0);
-  assert.equal(parentRisk({ emptyInspects: 1, meltdowns: 1, wrongArrests: 1 }), 43);
+  assert.equal(parentRisk({ emptyInspects: 1, meltdowns: 1, wrongArrests: 1 }), 53);
   assert.equal(parentRisk({ emptyInspects: 10, meltdowns: 10, wrongArrests: 10 }), 100);
 });
 
@@ -95,5 +99,29 @@ test('lawsuit_risk 우선순위', () => {
   assert.equal(evaluateEnding({ ...risky, wrongCaught: [{ id: 3, type: 'distracted' }] }).id, 'lawsuit');
   assert.equal(evaluateEnding({ ...base, riskRoll: 0 }).id, 'topscorer');
   assert.equal(evaluateEnding({ ...base, parentRisk: 100 }).id, 'topscorer');
+  assert.equal(evaluateEnding({ ...base, parentRisk: 14, riskRoll: 0 }).id, 'topscorer');
+  assert.equal(evaluateEnding({ ...base, parentRisk: 15, riskRoll: 0 }).id, 'lawsuit_risk');
   assert.equal(evaluateEnding({ ...risky, missed: [] }).id, 'lawsuit_risk');
+});
+
+test('stalemate vs topscorer', () => {
+  const base = { caught: [], wrongCaught: [], hearingDamaged: false, empCount: 0 };
+  const m = (...p) => p.map((progress, i) => ({ id: i + 1, device: 'camai', progress }));
+  assert.equal(evaluateEnding({ ...base, missed: m(0, 59.9) }).id, 'stalemate');
+  assert.equal(evaluateEnding({ ...base, missed: m(10, 60) }).id, 'topscorer');
+  assert.equal(evaluateEnding({ ...base, missed: [{ id: 1, device: 'camai' }] }).id, 'topscorer');
+  assert.equal(evaluateEnding({ ...base, missed: [] }).id, 'perfect');
+});
+
+test('nervousSignProb 경계', () => {
+  assert.equal(nervousSignProb(29), 0);
+  near(nervousSignProb(30), 0.2);
+  near(nervousSignProb(90), 0.6);
+  near(nervousSignProb(150), 0.6);
+});
+
+test('releaseNoEvidence', () => {
+  const arr = [{ id: 1, evidence: true }, { id: 2, evidence: false }, { id: 3, evidence: false }];
+  assert.deepEqual(releaseNoEvidence(arr, () => 0), { kept: [1], released: [2, 3] });
+  assert.deepEqual(releaseNoEvidence(arr, () => TUNE.releaseNoEvidence), { kept: [1, 2, 3], released: [] });
 });

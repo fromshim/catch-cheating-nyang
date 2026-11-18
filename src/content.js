@@ -5,6 +5,7 @@ export const EXAM = '전국인생결정능력시험';
 export const EXAM_SHORT = '인능';
 export const ORG = '국가서열평가원';
 export const MINISTRY = '교육서열부';
+const SHORT_ORG = '서열평가원';
 
 export const C = {
   menu: {
@@ -31,7 +32,8 @@ export const C = {
       '고사실 1곳, 수험생 24명, 감독관 당신 1명(원래는 2명).',
       'WASD 이동 / 마우스 시선',
       'E 홀드(2m 안): 소지품 검사 · F(2m 안): 적발 · Q: EMP 발사(게이지 100)',
-      '8m 안에서 화면 중앙에 두고 본 징후만 감독 일지에 남습니다.',
+      '징후는 3m 안에서 화면 중앙에 두고 봐야 종류가 일지에 남습니다. 멀리서는 "뭔가 움직였다"만 보입니다.',
+      '기기 발견·EMP 반응 같은 증거 없이 적발하면, 범인도 시험 후 풀려날 수 있습니다.',
       '빈손 검사는 학생을 긴장시키고, 교실이 조용하면 범인이 대담해집니다. 검사는 5초에 한 번만 됩니다.',
     ],
     clickStart: '클릭하여 시작',
@@ -47,7 +49,7 @@ export const C = {
     heatCalm: (s, max) => `조용함 ${s}/${max}초`,
     counts: (n, total) => `검거 ${n} / 총 범인 ${total}`,
     levels: { calm: '평온', tense: '긴장', high: '위험', meltdown: '멘붕' },
-    inspected: { none: '안 함', empty: '빈손', found: '기기 발견' },
+    inspected: { none: '안 함', empty: '빈손', found: '기기 발견', emp: 'EMP 반응' },
     aimCard: (id, level, seen, insp) => `<b>${id}번</b><br>긴장 ${level}<br>본 징후 ${seen}<br>검사 ${insp}`,
     empCount: '전파법 감사',
     journal: '감독 일지',
@@ -66,6 +68,7 @@ export const C = {
       stretch: { text: '기지개를 켬', sus: false },
       pen: { text: '펜을 굴림', sus: false },
       emp: { text: '전자기기 반응', sus: true },
+      far: { text: '뭔가 움직였다 (너무 멀어 못 알아봄)', sus: false },
     },
     log: (id, text) => `${id}번: ${text}`,
     // 행동 → 결과 한 줄 캡션
@@ -74,7 +77,7 @@ export const C = {
       found: (id, dev, heat, n) => `${id}번 책상 아래에서 ${dev} 발견 → 적발(F)하십시오 · 경계도 +${heat}${n ? ` · 주변 ${n}명 긴장` : ''}`,
       meltdown: (id, risk) => `${id}번 멘붕 → 학부모 리스크 +${risk}`,
       bold: '교실이 조용하다 → 범인들이 대담해진다',
-      caughtRight: (id, heat, n) => `${id}번 부정행위 적발, 퇴실 → EMP 충전 · 경계도 +${heat}${n ? ` · 주변 ${n}명 긴장` : ''}`,
+      caughtRight: (id, heat, n, evidence) => `${id}번 부정행위 적발, 퇴실 → EMP 충전 · 경계도 +${heat}${n ? ` · 주변 ${n}명 긴장` : ''}${evidence ? '' : ' · 증거 없음, 판정은 시험 후'}`,
       caughtWrong: (id, risk, heat, n) => `${id}번 오적발, 수험생 "저 아무것도 안 했는데요…" → 학부모 리스크 +${risk} · 경계도 +${heat}${n ? ` · 주변 ${n}명 긴장` : ''}`,
       emp: (kind, heat, n) => ({
         hearing: '반경 안의 의료기기가 손상되었습니다',
@@ -82,12 +85,16 @@ export const C = {
         none: '전자기기 억제 펄스 발사, 반응한 기기 없음',
       })[kind] + ` → 경계도 +${heat} · 반경 내 ${n}명 긴장`,
     },
+    directive: {
+      start: `[${SHORT_ORG} 긴급 지침] 안경 착용 수험생 전원 소지품 검사 실시`,
+      withdraw: `[${SHORT_ORG}] "해당 지침은 검토한 바 없음"`,
+    },
     ticker: [
-      `[속보] ${EXAM_SHORT} 전국 수석, 유튜브서 "AI로 풀었다" 자수... 경찰 수사 착수`,
+      `[속보] ${EXAM_SHORT} 전국 수석, 영상 올려 "AI로 풀었다" 자수... 경찰 수사 착수`,
       `${ORG} "고사실마다 감독관 2명 배치, 규정상 문제 없었다"`,
       `${ORG}, 재발 방지 대책으로 "감독관 눈을 더 크게 뜨겠다" 발표`,
       `${ORG} "감독관 확인 결과 특이사항 없음"... 이틀 뒤 수석 자수`,
-      `${MINISTRY} 장관 "부정행위 100% 적발? 저는 못 할 것 같습니다"... 부처 "감독관 고충에 공감한 것" 해명`,
+      `${MINISTRY} 장관, 부정행위 100% 적발 질문에 "자신 없다" 취지 답변... 부처 "감독관 고충에 공감한 것" 해명`,
       `${MINISTRY} 오전 "전파 차단 검토" → 오후 "검토하고 있지 않다" 공지`,
       `${EXAM_SHORT} 유의사항 "스마트안경, 착용만 해도 사용으로 간주"... 시험 열흘 전 발표`,
       '[단독] 감독관 수당 올해도 제자리... 대신 키높이 의자 1개 지급',
@@ -131,6 +138,14 @@ export const C = {
       body: [
         '펄스가 퍼진 순간, 고사실 한쪽에서 짧고 날카로운 소리가 났다. 한 수험생의 보청기였다. 남은 시간 동안 그 사람은 안내 방송도, 종료령도 듣지 못했다.',
         '서열평가원은 "해당 장비의 사용은 매뉴얼에 없었다"고 답했다. 매뉴얼에 없는 장비를 쏜 사람은 당신뿐이었다.',
+      ],
+    },
+    stalemate: {
+      title: '끝까지 못 채운 답안지',
+      realityCard: null, // 아래에서 perfect 카드를 그대로 재사용
+      body: [
+        '아무도 다 베끼지 못했다. 부정행위자는 있었지만, 종이 울렸을 때 어느 답안지도 끝까지 채워지지 않았다.',
+        '{meltdownLine} 시험은 공정하게 끝났다. 편하게 풀었다고 말할 사람은 없었다.',
       ],
     },
     topscorer: {
@@ -181,6 +196,12 @@ export const C = {
     riskPct: '학부모 리스크',
     meltdownCount: '멘붕',
     emptyCount: '빈손 검사',
+    released: (n) => `증거 불충분 석방 ${n}명`,
+    directiveFollowed: (n) => `지침 이행: 안경 쓴 수험생 ${n}명 검사 → 지침은 철회됨`,
+    directiveIgnored: '지침 불이행 기록됨',
+    meltdownLine: (n) => (n ? `대신 고사실에는 멘붕한 수험생 ${n}명이 남았다.` : '멘붕한 수험생은 없었지만, 붉어진 얼굴들은 종이 울릴 때까지 가라앉지 않았다.'),
+    probTitle: '소지품 검사 발견 확률',
+    probNote: '옛 수법만 잡힌다',
     reality: '현실 카드',
     again: '다시하기',
     menu: '메뉴로',
@@ -249,3 +270,6 @@ export const C = {
   },
   common: { realityTitle: '현실 카드' },
 };
+
+// 교착 엔딩은 완벽한 감독 엔딩의 현실 카드를 그대로 쓴다
+C.endings.stalemate.realityCard = C.endings.perfect.realityCard;
