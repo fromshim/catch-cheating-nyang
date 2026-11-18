@@ -46,7 +46,7 @@ export function buildClassroom() {
     new THREE.BoxGeometry(ROOM.x * 2, 3.2, ROOM.zMax * 2),
     new THREE.MeshStandardMaterial({ color: 0xd8ceb8, side: THREE.BackSide, roughness: 1 }),
   );
-  wall.position.y = 1.6;
+  wall.position.y = 1.59; // 아랫면을 바닥(y=0)보다 살짝 내린다. 같은 높이면 z-fighting으로 바닥이 지지직거린다
   scene.add(wall);
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(ROOM.x * 2, ROOM.zMax * 2), mat(0x9c8a6c));
   floor.rotation.x = -Math.PI / 2;
