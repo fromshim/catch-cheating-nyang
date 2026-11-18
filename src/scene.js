@@ -17,7 +17,7 @@ export function makeRenderer(canvas) {
   r.toneMapping = THREE.NeutralToneMapping;
   r.toneMappingExposure = 1.0;
   r.shadowMap.enabled = true;
-  r.shadowMap.type = THREE.PCFSoftShadowMap;
+  r.shadowMap.type = THREE.PCFShadowMap;
   return r;
 }
 

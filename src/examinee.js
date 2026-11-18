@@ -101,11 +101,11 @@ export function startExaminee({ renderer, ui, onEnd }) {
     });
   }
 
-  const clock = new THREE.Clock();
+  const timer = new THREE.Timer();
   const me = new THREE.Vector2();
   function frame() {
     raf = requestAnimationFrame(frame);
-    const dt = Math.min(clock.getDelta(), 0.05);
+    timer.update(); const dt = Math.min(timer.getDelta(), 0.05);
     if (running && !ended) update(dt);
     for (const p of people) if (p) animatePerson(p, t, dt);
     for (const n of npcs) {

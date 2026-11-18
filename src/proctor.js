@@ -276,10 +276,10 @@ export function startProctor({ renderer, ui, onEnd }) {
     onEnd({ ending: evaluateEnding(state), state, risk, meltdowns, emptyInspects });
   }
 
-  const clock = new THREE.Clock();
+  const timer = new THREE.Timer();
   function frame() {
     raf = requestAnimationFrame(frame);
-    const dt = Math.min(clock.getDelta(), 0.05);
+    timer.update(); const dt = Math.min(timer.getDelta(), 0.05);
     if (running && !ended) update(dt);
     ring.update(dt);
     for (const p of people) animatePerson(p, t, dt);
