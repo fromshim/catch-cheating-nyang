@@ -8,6 +8,8 @@ import { INSPECT_PROB } from './logic.js';
 import { startExaminee } from './examinee.js';
 
 const ui = document.getElementById('ui');
+// 터치 기기 세로 화면 안내. 보임·숨김은 style.css 의 미디어 쿼리가 맡는다
+document.body.insertAdjacentHTML('beforeend', `<div id="rotate"><i></i><p>${C.rotate}</p></div>`);
 const renderer = makeRenderer(document.getElementById('c'));
 let mode = null;
 

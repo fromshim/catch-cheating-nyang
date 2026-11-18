@@ -52,3 +52,24 @@
 .hk-kf .hk-mouse { position: absolute; width: 56px; height: 90px; background: #F4F1E6; border-radius: 28px 28px 22px 22px; border-bottom: 5px solid #bfb89f; }
 .hk-kf .hk-mouse::before { content: ''; position: absolute; left: 27px; top: 0; width: 2px; height: 34px; background: #1B1F24; opacity: .35; }
 .hk-kf .hk-mouse::after { content: ''; position: absolute; left: 23px; top: 10px; width: 10px; height: 16px; border-radius: 5px; background: #1B1F24; opacity: .6; }
+
+/* 터치 입력(touch.js). 컨테이너는 입력을 막지 않고 영역·버튼만 받는다 */
+.hk-t { position: fixed; inset: 0; z-index: 30; pointer-events: none; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.hk-t * { touch-action: none; }
+.hk-t-zone { position: absolute; pointer-events: auto; }
+.hk-t-look { left: 50%; top: 0; right: 0; bottom: 0; }
+.hk-t-move { left: 0; top: 35%; width: 50%; bottom: 0; }
+.hk-t-base { display: none; position: absolute; width: 110px; height: 110px; margin: -55px 0 0 -55px; border-radius: 50%; background: rgba(27,31,36,.4); border: 2px solid rgba(244,241,230,.45); pointer-events: none; }
+.hk-t-knob { position: absolute; left: 33px; top: 33px; width: 44px; height: 44px; border-radius: 50%; background: rgba(244,241,230,.75); }
+.hk-t-btn { position: absolute; pointer-events: auto; width: 68px; height: 68px; border-radius: 50%; display: flex; align-items: center; justify-content: center; text-align: center; background: rgba(27,31,36,.62); border: 2px solid rgba(244,241,230,.5); color: #F4F1E6; font-weight: 800; font-size: 15px; line-height: 1.1; font-family: inherit; transition: transform .06s, background .06s; }
+.hk-t-small { width: 52px; height: 52px; font-size: 13px; }
+.hk-t-btn.on { transform: scale(.92); background: rgba(244,241,230,.88); color: #1B1F24; }
+.hk-t-btn.off { opacity: .4; }
+.hk-t-badge { position: absolute; right: -4px; top: -4px; min-width: 22px; padding: 1px 5px; border-radius: 11px; background: #F4F1E6; color: #1B1F24; font-size: 12px; font-weight: 800; }
+.hk-t-badge:empty { display: none; }
+
+/* 터치 안내 그림 */
+.hk-tp { position: absolute; box-sizing: border-box; border: 3px solid var(--hk-paper); border-radius: 36px; background: rgba(244,241,230,.05); }
+.hk-tp-c { position: absolute; border-radius: 50%; box-sizing: border-box; display: flex; align-items: center; justify-content: center; font-weight: 800; color: var(--hk-ink); background: var(--hk-paper); border-bottom: 5px solid #bfb89f; }
+.hk-tp-c.ring { background: rgba(244,241,230,.12); border: 3px solid var(--hk-paper); }
+.hk-tp-c.seal { color: var(--hk-seal); }

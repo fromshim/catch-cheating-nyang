@@ -4,6 +4,8 @@ import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockCont
 import { buildClassroom, seatExaminees, createPerson, animatePerson, seatPos, autoResize } from './scene.js';
 import { mulberry32 } from './logic.js';
 import { C } from './content.js';
+import { isTouch, mountTouch } from './touch.js';
+import './hudkit.css'; // 터치 버튼 스타일(hk-t)이 여기 있다
 
 const E = C.examinee;
 const SEAT = 14; // 3번째 줄, 3번째 열
@@ -51,7 +53,7 @@ export function startExaminee({ renderer, ui, onEnd }) {
     <div class="gauges">
       <div class="gauge"><label>${E.progress}</label><i><u id="e-prog"></u></i></div>
       <div class="gauge warn"><label>${E.suspicion}</label><i><u id="e-susp"></u></i></div></div>
-    <ul class="keys">${E.keys.map(([k, v]) => `<li><kbd>${k}</kbd>${v}</li>`).join('')}</ul>
+    <ul class="keys">${isTouch ? '' : E.keys.map(([k, v]) => `<li><kbd>${k}</kbd>${v}</li>`).join('')}</ul>
     <div id="e-use" class="usefx" hidden>${E.using}</div><div class="cross"></div>
     <div id="e-ov" class="overlay"></div></div>`;
   const $ = (id) => ui.querySelector('#' + id);
@@ -64,19 +66,36 @@ export function startExaminee({ renderer, ui, onEnd }) {
     const d = E.devices[k];
     return `<button data-d="${k}"><b>${C.deviceNames[k]}</b><span>${E.speed}: ${d.speed}</span><span>${E.risk}: ${d.risk}</span></button>`;
   }).join('')}</div>`, '');
+  // 일시정지 버튼을 뗀 뒤 따라오는 합성 click 이 방금 뜬 일시정지 화면을 곧바로 닫지 않게 삼킨다
+  const pauseTap = () => {
+    const eat = (e) => e.stopPropagation();
+    addEventListener('click', eat, { capture: true, once: true }); setTimeout(() => removeEventListener('click', eat, true), 1500);
+    setRun(false);
+  };
   ov.onclick = (ev) => {
     const b = ev.target.closest('button[data-d]');
     if (b) {
       dev = b.dataset.d;
-      panel(C.deviceNames[dev], E.startLines, '', E.clickStart);
-    } else if (dev) { audio.init(); audio.hum(true); controls.lock(); }
+      panel(C.deviceNames[dev], isTouch ? E.startLinesTouch : E.startLines, '', isTouch ? E.tapStart : E.clickStart);
+    } else if (dev) { audio.init(); audio.hum(true); isTouch ? setRun(true) : controls.lock(); }
   };
+  // 수험생은 이동이 없다: 합성되는 W/A/S/D 는 아래 keydown 이 Space 만 보므로 무해하다
+  const touch = isTouch && mountTouch(ui.querySelector('.hud'), { camera, buttons: [
+    { id: 'use', label: E.useBtn, code: 'Space', hold: true },
+    { id: 'pause', label: E.pauseBtn, onTap: pauseTap },
+  ] });
+  if (touch) touch.el.hidden = true;
 
   const setRun = (v) => {
     running = v; started = true; ov.hidden = v;
+    if (touch) touch.el.hidden = !v;
     audio.hum(v); if (!v) audio.heartbeat(0);
-    if (!v && !ended) panel(E.paused, [], '', E.clickResume);
+    if (!v && !ended) panel(E.paused, [], '', isTouch ? E.tapResume : E.clickResume);
   };
+  // 게임 중 폰을 세로로 돌리면 입력이 막히니 시간도 멈춘다
+  const portrait = matchMedia('(orientation: portrait)');
+  const onRotate = (ev) => { if (isTouch && ev.matches && running && !ended) setRun(false); };
+  portrait.addEventListener('change', onRotate);
   const onLockErr = () => { if (!ended && dev) setRun(true); };
   controls.addEventListener('lock', () => setRun(true));
   controls.addEventListener('unlock', () => { if (!ended && started) setRun(false); });
@@ -154,7 +173,8 @@ export function startExaminee({ renderer, ui, onEnd }) {
   return {
     stop() {
       cancelAnimationFrame(raf); ended = true; audio.stopAll(); stopResize();
-      controls.unlock(); controls.dispose();
+      controls.unlock(); controls.dispose(); touch?.dispose();
+      portrait.removeEventListener('change', onRotate);
       removeEventListener('keydown', down); removeEventListener('keyup', up);
       document.removeEventListener('pointerlockerror', onLockErr);
       ui.innerHTML = '';

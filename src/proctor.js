@@ -4,7 +4,8 @@ import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockCont
 import { buildClassroom, seatExaminees, createPerson, animatePerson, seatPos, exitPath, autoResize, renderPortraits, renderDeviceCards, ROOM, SEAT_RADIUS } from './scene.js';
 import { allCaught, assignExaminees, evaluateEnding, inspectChance, signalVisibility, mulberry32, TUNE, stressStep, stressLevel, heatStep, calmStep, cheaterMul, innocentTellMul, parentRisk, nervousSignProb, releaseNoEvidence, coSpots } from './logic.js';
 import { C } from './content.js';
-import { kbd, bust, stack, dial, ring as aimRing } from './hudkit.js';
+import { kbd, bust, stack, dial, ring as aimRing, touchPad } from './hudkit.js';
+import { isTouch, mountTouch } from './touch.js';
 
 const P = C.proctor;
 const GLOW = { camai: 'button', earbud: 'ear', glasses: 'lens' }; // 신호 kind → 발광 부위
@@ -66,6 +67,13 @@ export function startProctor({ renderer, ui, onEnd }) {
   const riskOf = () => parentRisk({ emptyInspects, meltdowns, wrongArrests: state.wrongCaught.length });
   let running = false, started = false, ended = false, raf = 0;
   const keys = {};
+  // 일시정지 버튼을 뗀 뒤 따라오는 합성 click 이 방금 뜬 일시정지 화면을 곧바로 닫지 않게 삼킨다
+  const pauseTap = () => {
+    const eat = (e) => e.stopPropagation();
+    addEventListener('click', eat, { capture: true, once: true }); setTimeout(() => removeEventListener('click', eat, true), 1500);
+    setRun(false);
+  };
+  let touch = null; // 터치 기기의 가상 조작. setRun 이 보임을 관리한다
 
   // HUD
   ui.innerHTML = `
@@ -103,21 +111,35 @@ export function startProctor({ renderer, ui, onEnd }) {
     ov.innerHTML = `<div class="panel start"><div class="clues">${G.clues.map((c, k) => `${k ? '<i class="arr">→</i>' : ''}<div class="plate"><small>${c.h}</small><b>${c.t}</b><span>${c.d}</span></div>`).join('')}</div>
       <div class="who">${G.who.map((w, k) => `${k === 3 ? '<div class="sep"></div>' : ''}<figure class="${w.no ? 'no' : ''}">${bust({ ...w.o, w: 124 })}<em>${w.tag}</em><b>${w.t}</b><span>${w.d}</span></figure>`).join('')}</div>
       <p class="co"><b>[!]</b>${G.co}</p>
-      <div class="kwrap" style="--hk-scale:${Math.max(0.5, sc)}">${kbd(G.keys)}</div>
-      <p class="cta">${P.clickStart}</p></div>`;
+      <div class="kwrap" style="--hk-scale:${isTouch ? 0.85 : Math.max(0.5, sc)}">${isTouch ? touchPad(G.touch) : kbd(G.keys)}</div>
+      <p class="cta">${isTouch ? P.tapStart : P.clickStart}</p></div>`;
   };
   showStart();
-  ov.onclick = () => { audio.init(); audio.hum(true); controls.lock(); };
+  if (isTouch) {
+    touch = mountTouch(ui.querySelector('.hud'), { camera, buttons: [
+      { id: 'inspect', label: P.mini.e, code: 'KeyE', hold: true },
+      { id: 'arrest', label: P.mini.f, code: 'KeyF' },
+      { id: 'emp', label: P.mini.q, code: 'KeyQ' },
+      { id: 'pause', label: P.mini.esc, onTap: pauseTap },
+    ] });
+    touch.el.hidden = true; touch.set('emp', { disabled: true });
+  }
+  ov.onclick = () => { audio.init(); audio.hum(true); isTouch ? setRun(true) : controls.lock(); };
 
   // 포인터락이 안 되는 환경(헤드리스 등)이면 락 없이 그냥 진행한다.
   const onLockErr = () => { if (!ended) setRun(true); };
   const setRun = (v) => {
     running = v; started = true;
     ov.hidden = v; ui.querySelector('.hud').classList.toggle('cover', !v);
+    if (touch) touch.el.hidden = !v; // 안내·일시정지 화면의 탭을 가리지 않게
     audio.hum(v); if (!v) audio.heartbeat(0);
     if (!v) audio.whisper(0);
     if (!v && !ended) showPause();
   };
+  // 게임 중 폰을 세로로 돌리면 입력이 막히니 시간도 멈춘다
+  const portrait = matchMedia('(orientation: portrait)');
+  const onRotate = (ev) => { if (isTouch && ev.matches && running && !ended) setRun(false); };
+  portrait.addEventListener('change', onRotate);
   // 확대 모델 창: on·off 두 장을 겹쳐 위 장을 깜빡인다. 부품 이름과 리더 라인은 SVG 층(좌표는 anchors 비율)
   const deviceWin = (d, c) => {
     const imgs = deviceCards?.[d], anc = renderDeviceCards.anchors?.[d], W = 232, H = 206;
@@ -130,7 +152,7 @@ export function startProctor({ renderer, ui, onEnd }) {
   };
   // 일시정지 패널 = 기기 신호 도감. 패널 안 클릭은 계속되지 않고, 계속 버튼·바깥 클릭만 계속한다
   function showPause() {
-    const X = P.codex, GL = X.gauges, labels = Object.fromEntries(Object.entries(P.guide.keys).map(([k, v]) => [k, { t: v.t }]));
+    const X = P.codex, GL = X.gauges, labels = Object.fromEntries(Object.entries(isTouch ? P.guide.touch : P.guide.keys).map(([k, v]) => [k, { t: v.t }]));
     if (deviceCards === undefined) { try { deviceCards = renderDeviceCards(); } catch (err) { deviceCards = null; console.warn('device cards', err); } }
     const fig = (h, t) => `<div>${h}<span>${t}</span></div>`;
     const card = ([d, c]) => `<div class="card">${deviceWin(d, c)}<div class="info"><h3>${c.name}<small>${c.sub}</small></h3>${seenDev.has(d) ? `<span class="stamp">${X.stamp}</span>` : `<span class="slot">${X.unseen}</span>`}
@@ -140,7 +162,7 @@ export function startProctor({ renderer, ui, onEnd }) {
     ov.innerHTML = `<div class="panel codex"><header><h2>${P.paused}</h2><span>${X.title} · ${X.sub}</span><button class="resume">${X.resume}</button></header>
       <div class="cards">${Object.entries(X.cards).map(card).join('')}</div>
       <div class="ev"><b>${X.evidence.title}</b>${X.evidence.rows.map((r) => `<span class="${r.ok ? 'ok' : ''}">${r.t}<em>${r.s}</em></span>`).join('')}</div>
-      <div class="row2"><section class="kk"><h4>${X.keys}</h4>${kbd(labels, { compact: true })}</section>
+      <div class="row2"><section class="kk"><h4>${X.keys}</h4>${isTouch ? touchPad(labels) : kbd(labels, { compact: true })}</section>
       <section class="gz"><h4>${X.gaugesTitle}</h4>
         <div>${`<div class="lv">${GL.lv.risk.map((n) => fig(stack(+n, 0, P.replaceLine), n)).join('')}</div>`}<h5>${GL.risk[0]}</h5><p>${GL.risk[1]}</p></div>
         <div><div class="lv">${fig(dial(0, 22, 84, P.dialLabels), GL.lv.heat[0])}${fig(dial(25, 0, 84, P.dialLabels), GL.lv.heat[1])}${fig(dial(80, 0, 84, P.dialLabels), GL.lv.heat[2])}</div><h5>${GL.heat[0]}</h5><p>${GL.heat[1]}</p></div>
@@ -590,7 +612,7 @@ export function startProctor({ renderer, ui, onEnd }) {
     const vig = Math.min(1, risk / 100 * 0.7 + pulse * 0.5);
     $('p-vig').style.opacity = vig.toFixed(2);
     const cdS = Math.ceil(inspectCd);
-    if (eK.dataset.cd !== (cdS > 0 ? String(cdS) : '')) { eK.dataset.cd = cdS > 0 ? cdS : ''; eK.classList.toggle('cd', cdS > 0); }
+    if (eK.dataset.cd !== (cdS > 0 ? String(cdS) : '')) { eK.dataset.cd = cdS > 0 ? cdS : ''; eK.classList.toggle('cd', cdS > 0); touch?.set('inspect', { disabled: cdS > 0, badge: cdS > 0 ? cdS : '' }); }
     const rn = Math.round(risk);
     if ($('p-risk-n').textContent !== String(rn)) $('p-risk-n').textContent = rn;
     const sk = Math.ceil(risk / 10);
@@ -599,7 +621,7 @@ export function startProctor({ renderer, ui, onEnd }) {
     if (dk !== dialKey) { dialKey = dk; $('p-dial').innerHTML = dial(heat, calmTime, 116, P.dialLabels); }
     const hn = calmTime > TUNE.boldAfter ? P.heatBold : calmTime > 0 ? P.heatCalm(Math.floor(calmTime), TUNE.boldAfter) : heat >= 50 ? P.heatShy : heat > 0 ? P.heatWatch : '';
     if ($('p-heat-n').textContent !== hn) $('p-heat-n').textContent = hn;
-    qK.classList.toggle('rdy', emp >= 100);
+    qK.classList.toggle('rdy', emp >= 100); touch?.set('emp', { disabled: emp < 100 });
     $('p-g-risk').classList.toggle('danger', risk >= 90);
     ring.preview(camera.position.x, camera.position.z, TUNE.empRadius, emp >= 100);
     setClock(Math.max(0, timeLeft / T0));
@@ -629,7 +651,8 @@ export function startProctor({ renderer, ui, onEnd }) {
   return {
     stop() {
       cancelAnimationFrame(raf); clearTimeout(overTimer); ended = true; audio.stopAll();
-      stopResize(); controls.unlock(); controls.dispose();
+      stopResize(); controls.unlock(); controls.dispose(); touch?.dispose();
+      portrait.removeEventListener('change', onRotate);
       removeEventListener('keydown', kd); removeEventListener('keyup', ku);
       document.removeEventListener('pointerlockerror', onLockErr);
       ui.innerHTML = '';

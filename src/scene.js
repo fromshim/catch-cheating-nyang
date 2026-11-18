@@ -8,11 +8,15 @@ export const deskPos = (i) => ({ x: ((i % 6) - 2.5) * 1.8, z: -3.5 + Math.floor(
 // 앉은 수험생의 몸 위치(책상 뒤)
 export const seatPos = (i) => { const d = deskPos(i); return { x: d.x, z: d.z + 0.75 }; };
 
+// 터치 기기 저화질 모드 (touch.js 를 import 하면 순환하니 여기서 따로 판정)
+const LOW = typeof window !== 'undefined' && (matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0);
+export const LOW_QUALITY = LOW;
+
 export const SEAT_RADIUS = 0.45; // 감독관 카메라가 앉은 인물에 파고들지 않게 하는 충돌 반경
 
 export function makeRenderer(canvas) {
-  const r = new THREE.WebGLRenderer({ canvas, antialias: true });
-  r.setPixelRatio(Math.min(devicePixelRatio, 2));
+  const r = new THREE.WebGLRenderer({ canvas, antialias: !LOW });
+  r.setPixelRatio(Math.min(devicePixelRatio, LOW ? 1.5 : 2));
   r.setSize(innerWidth, innerHeight);
   r.toneMapping = THREE.NeutralToneMapping;
   r.toneMappingExposure = 1.0;
@@ -23,8 +27,9 @@ export function makeRenderer(canvas) {
 
 export function autoResize(renderer, camera) {
   const f = () => {
-    renderer.setSize(innerWidth, innerHeight);
-    camera.aspect = innerWidth / innerHeight;
+    const w = visualViewport?.width || innerWidth, h = visualViewport?.height || innerHeight; // 모바일 주소창 대응
+    renderer.setSize(w, h);
+    camera.aspect = w / h;
     camera.updateProjectionMatrix();
   };
   addEventListener('resize', f);
@@ -168,9 +173,11 @@ export function buildClassroom() {
     const p = box(1.8, 0.06, 0.35, panelMat);
     p.position.set(lx, 3.15, lz);
     scene.add(p);
-    const l = new THREE.PointLight(0xe8f3ea, 6, 12, 2);
-    l.position.set(lx, 2.6, lz);
-    l.userData.base = 6;
+    // 저화질: 한 줄(lz) 당 점광원 하나만, 두 패널 사이(x=0)에 두고 강도를 두 배로
+    if (LOW && lx > 0) continue;
+    const l = new THREE.PointLight(0xe8f3ea, LOW ? 12 : 6, 12, 2);
+    l.position.set(LOW ? 0 : lx, 2.6, lz);
+    l.userData.base = LOW ? 12 : 6;
     scene.add(l);
     lights.push(l);
   }
@@ -179,7 +186,7 @@ export function buildClassroom() {
   const sun = new THREE.DirectionalLight(0xffffff, 1.2);
   sun.position.set(2, 6, 1);
   sun.castShadow = true;
-  sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.mapSize.setScalar(LOW ? 1024 : 2048);
   Object.assign(sun.shadow.camera, { left: -9, right: 9, top: 9, bottom: -9, near: 0.5, far: 20 });
   sun.shadow.bias = -0.0005;
   sun.shadow.radius = 3;

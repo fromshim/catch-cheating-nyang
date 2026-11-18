@@ -226,3 +226,65 @@ button { font: inherit; color: inherit; cursor: pointer; }
 @media (prefers-reduced-motion: reduce) { .codex .win img.on, .comark, .obs .saw, .bigstamp.go, .g.danger { animation: none; } .bigstamp.go { opacity: 1; } }
 
 .hud.cover > :not(.overlay):not(.ticker):not(.vignette) { visibility: hidden; }
+
+/* ===== 모바일(터치) =====  PC 화면은 건드리지 않는다: 전부 미디어 쿼리 안 */
+#rotate { display: none; }
+@media (pointer: coarse) {
+  html, body { overscroll-behavior: none; }
+  #c, .hud { touch-action: none; }
+  .screen, .overlay { touch-action: pan-y; }
+  /* 노치 여백 */
+  .gauges { top: max(6px, env(safe-area-inset-top)); left: max(8px, env(safe-area-inset-left)); transform: scale(.62); transform-origin: top left; }
+  .journal { top: max(6px, env(safe-area-inset-top)); right: calc(max(8px, env(safe-area-inset-right)) + 66px); width: 190px; padding: 4px 8px; font-size: 11px; }
+  .journal h3 { display: none; }
+  .journal li:nth-child(n+3) { display: none; }
+  .hud-center { top: max(4px, env(safe-area-inset-top)); }
+  .hud-center b { font-size: 26px; }
+  .hud-center span { font-size: 13px; margin-top: 1px; }
+  .banner { top: 56px; font-size: 13px; padding: 6px 14px; }
+  .viewstate { top: 56px; font-size: 12px; }
+  .mini, .act kbd { display: none; }
+  .act { left: calc(50% + 30px); font-size: 13px; }
+  .obs { padding: 4px 10px 6px; }
+  .obs .head { font-size: 11px; }
+  .obs .head b { font-size: 14px; }
+  .obs .saw { font-size: 14px; }
+  .obs .saw.like { font-size: 12px; }
+  .caps { bottom: 38px; max-width: 46vw; gap: 4px; }
+  .caps > div { padding: 5px 12px 6px; }
+  .caps > div > b { font-size: 15px; }
+  .caps > div.sm > b { font-size: 13px; }
+  .caps .chips span { font-size: 12px; }
+  .bigstamp { font-size: 44px; top: calc(50% - 110px); border-width: 5px; }
+  .ticker { height: 20px; }
+  .ticker-tag { font-size: 11px; padding: 0 8px; }
+  .ticker-in { font-size: 11px; line-height: 20px; }
+  .usefx { bottom: 30px; font-size: 13px; }
+  .examinee .keys { display: none; }
+  .say { font-size: 13px; }
+  /* 시작 안내·도감은 낮은 화면에 맞춰 줄이고, 넘치면 세로로 민다 */
+  .panel.start { height: auto; min-height: 100%; zoom: .5; padding-top: 8px; }
+  .overlay:has(.panel.start) { align-items: flex-start; overflow-y: auto; }
+  .panel.codex { zoom: .6; }
+  .start .cta { position: static; margin: 10px 0 !important; }
+  .screen { padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 16px max(16px, env(safe-area-inset-left)); }
+  .menu .ticket { padding: 12px 24px 10px; }
+  .menu .ticket h5 { font-size: 13px; padding-bottom: 6px; }
+  .menu .ticket .org { margin-top: 6px; font-size: 12px; }
+  .menu .ticket h1 { font-size: 32px; }
+  .menu .ticket .sub { margin: 0 0 10px; font-size: 12px; }
+  .menu .ticket .modes button { padding: 8px 12px; }
+  .menu .ticket .modes b { font-size: 18px; }
+  .menu .ticket .modes span { font-size: 11px; }
+  .menu .seal { width: 52px; height: 52px; font-size: 9px; top: 8px; right: 14px; }
+  .menu .rec { font-size: 11px; top: 6px; left: 12px; }
+  .notice { position: static; margin-top: 10px; }
+}
+/* 세로 화면: 전체를 덮고 입력을 막는다 */
+@media (orientation: portrait) and (pointer: coarse) {
+  #rotate { position: fixed; inset: 0; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; background: #1d1a16; font-size: 22px; font-weight: 700; touch-action: none; }
+  #rotate p { margin: 0; }
+  #rotate i { width: 64px; height: 108px; border: 5px solid var(--hk-paper, #F4F1E6); border-radius: 12px; animation: rot 2.4s ease-in-out infinite; }
+  @keyframes rot { 0%, 25% { transform: rotate(0); } 60%, 100% { transform: rotate(-90deg); } }
+}
+@media (pointer: coarse) { .codex .kk { width: 410px; } .codex .kk .hk-kfw { --hk-scale: .42; } }

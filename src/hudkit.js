@@ -80,3 +80,28 @@ export function ring(emp, insp = 0, w = 64) {
   return `<svg class="hk-ring" width="${w}" height="${w}" viewBox="0 0 64 64">${c(24, 1, '#000', 5, .35)}${c(24, emp / 100, '#F4F1E6', full ? 4 : 3, full ? 1 : .6)}${insp ? c(15, insp, '#e8c24a', 4) : ''}<circle cx="32" cy="32" r="3" fill="#fff" fill-opacity=".85"/>
     ${full ? '<rect x="44" y="44" width="18" height="18" rx="4" fill="#F4F1E6"/><text x="53" y="58" text-anchor="middle" font-size="13" font-weight="700" fill="#1B1F24">Q</text>' : ''}</svg>`;
 }
+
+// 터치 안내 그림(가로 휴대폰). 좌표 960x340 고정, 라벨 스타일은 kbd 와 같다.
+// labels: { move, look, inspect, arrest, emp, pause } 각 { t, c?, d?: [줄...] }
+const TSLOTS = [
+  { k: 'look', r: 1, x: 234, y: 98, line: '500,130 500,110 240,110' },
+  { k: 'move', r: 1, x: 234, y: 214, line: '290,236 240,236' },
+  { k: 'pause', x: 728, y: 92, line: '690,103 720,103' },
+  { k: 'emp', x: 728, y: 152, line: '696,164 720,164' },
+  { k: 'arrest', x: 728, y: 208, line: '668,220 720,220' },
+  { k: 'inspect', x: 728, y: 290, line: '584,272 584,300 720,300' },
+];
+const TCIRC = [['ring', 290, 206, 60, ''], ['', 560, 224, 48, '◎'], ['seal', 620, 196, 48, '!'], ['', 648, 140, 48, 'EMP'], ['', 656, 86, 34, '||']];
+export function touchPad(labels) {
+  const lab = ({ k, r, x, y }) => {
+    const { t = '', c: cond = '', d = [] } = labels[k] || {};
+    const i = cond ? `<i>${cond}</i>` : '';
+    return `<div class="hk-l${r ? ' r' : ''}" style="${r ? `right:${960 - x}px` : `left:${x}px`};top:${y}px">${r ? i : ''}<b>${t}</b>${r ? '' : i}${d.map((s) => `<span>${s}</span>`).join('')}</div>`;
+  };
+  const dots = TSLOTS.map((s) => s.line.split(' ')[0].split(',').map(Number));
+  return `<div class="hk-kfw"><div class="hk-kf"><div class="hk-tp" style="left:250px;top:70px;width:460px;height:212px"></div>
+    <svg viewBox="0 0 960 340">${TSLOTS.map((s) => `<polyline points="${s.line}"/>`).join('')}${dots.map(([x, y]) => `<circle cx="${x}" cy="${y}" r="3"/>`).join('')}
+    <path d="M500 130 H604 M592 118 L606 130 L592 142" fill="none" stroke="#F4F1E6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="500" cy="130" r="9"/></svg>
+    ${TCIRC.map(([c, x, y, s, g]) => `<div class="hk-tp-c ${c}" style="left:${x}px;top:${y}px;width:${s}px;height:${s}px;font-size:${g.length > 1 ? 13 : 22}px">${c === 'ring' ? '<i style="width:24px;height:24px;border-radius:50%;background:#F4F1E6"></i>' : g}</div>`).join('')}
+    ${TSLOTS.map(lab).join('')}</div></div>`;
+}

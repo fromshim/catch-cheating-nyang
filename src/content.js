@@ -9,6 +9,7 @@ const SHORT_ORG = '평가원';
 const SOFT = '목격 기록 있음, 판정은 시험 후';
 
 export const C = {
+  rotate: '가로로 돌려 주세요',
   menu: {
     title: '수능냥이를 잡아라',
     subtitle: `${EXAM} · 제2교시`,
@@ -54,8 +55,18 @@ export const C = {
         look: { t: '시점 이동' },
       },
       co: '부감독관이 의심 정황을 목격한 학생',
+      // 터치 기기용 조작 안내(touchPad 라벨)
+      touch: {
+        move: { t: '이동', c: '왼쪽 화면 밀기' },
+        look: { t: '시점 이동', c: '화면 문지르기' },
+        inspect: { t: '검사', c: '길게 누르기' },
+        arrest: { t: '적발', d: ['기기가 있으면 검거', '무고면 <em class="bad">학부모 리스크 +40</em>'] },
+        emp: { t: 'EMP', c: '충전이 다 차면' },
+        pause: { t: '일시정지 · 도감' },
+      },
     },
     clickStart: '클릭하여 시작',
+    tapStart: '화면을 눌러 시작',
     paused: '일시정지',
     clickResume: '클릭하여 계속',
     timeLeft: '남은 시간',
@@ -316,9 +327,17 @@ export const C = {
     ],
     inView: '감독관 시야 안',
     outView: '시야 밖',
+    startLinesTouch: [
+      '화면을 문질러 둘러볼 수 있습니다. 기기 버튼을 누르고 있으면 기기를 사용합니다.',
+      '바닥의 반투명 원뿔은 감독관의 시야입니다. 그 안에서 기기를 쓰면 의심 게이지가 오릅니다.',
+    ],
     clickStart: '클릭하여 시작',
+    tapStart: '화면을 눌러 시작',
     paused: '일시정지',
     clickResume: '클릭하여 계속',
+    tapResume: '화면을 눌러 계속',
+    useBtn: '기기',
+    pauseBtn: '정지',
     timeLeft: '남은 시간',
     progress: '답안 진척',
     suspicion: '의심',
