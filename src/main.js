@@ -70,7 +70,7 @@ function playProctor() {
       mode.stop(); mode = null;
       endScreen({
         title: e.title, stamp: e.stamp,
-        body: para(e.body).replace('{meltdownLine}', U.meltdownLine(meltdowns)) +
+        body: para(e.body).replace('{wrongLine}', U.wrongLine(state.wrongCaught.length)).replace('{meltdownLine}', U.meltdownLine(meltdowns)) +
           (ending.emp ? `<h3>${C.empPenalty.title}</h3><p>${C.empPenalty.body}</p>` : ''),
         stats: grid([[U.caught, state.caught.length], [U.wrong, state.wrongCaught.length], [U.missed, state.missed.length],
           [U.riskPct, `${Math.round(risk)}%`], [U.meltdownCount, meltdowns], [U.emptyCount, emptyInspects]]) +

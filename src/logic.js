@@ -39,6 +39,10 @@ export function signalVisibility(device, angleDeg) {
   return 0;
 }
 
+// 부감독관이 신호를 알아챘는가. angleDeg 는 signalVisibility 와 같은 정의.
+export const coSpots = (device, angleDeg, dist, roll) =>
+  dist <= TUNE.co.range && signalVisibility(device, angleDeg) >= TUNE.co.minVis && roll < TUNE.co.sightProb;
+
 /**
  * 수험생 배정. 반환: 길이 n 배열, 인덱스 i = 책상 i, id = i + 1.
  * type: 'cheater' | 'distracted' | 'hearing' | 'normal'
@@ -86,14 +90,16 @@ export function assignExaminees(seed, n = 24) {
  *   empCount: number,
  *   parentRisk?: number,                    // 0~100 학부모 리스크 %. riskSafeBelow 미만이면 고소 판정 없음
  *   riskRoll?: number,                      // 0~1 주사위. riskRoll < parentRisk/100 이면 고소
+ *   replaced?: boolean,                     // true 면 학부모 항의 폭주로 시험 도중 감독관 교체(최우선)
  * }
  * missed 의 device 는 DEVICES 3종(earbud|camai|glasses) 중 하나.
- * 반환: { id: 'lawsuit'|'medical'|'lawsuit_risk'|'stalemate'|'topscorer'|'perfect'|'complaint', emp: boolean }
+ * 반환: { id: 'replaced'|'lawsuit'|'medical'|'lawsuit_risk'|'stalemate'|'topscorer'|'perfect'|'complaint', emp: boolean }
  */
 export function evaluateEnding(state) {
   const emp = state.empCount >= 2;
   let id;
-  if (state.wrongCaught.some((w) => w.type === 'distracted')) id = 'lawsuit';
+  if (state.replaced === true) id = 'replaced';
+  else if (state.wrongCaught.some((w) => w.type === 'distracted')) id = 'lawsuit';
   else if (state.hearingDamaged) id = 'medical';
   else if (state.parentRisk !== undefined && state.parentRisk >= TUNE.riskSafeBelow && state.riskRoll !== undefined && state.riskRoll < state.parentRisk / 100) id = 'lawsuit_risk';
   else if (state.missed.length > 0) {
@@ -138,8 +144,15 @@ export const TUNE = {
   // 범인 부정행위 진척
   cheatBaseRate: 100 / 120,
   // 학부모 리스크 가중치
-  riskEmptyInspect: 8, riskMeltdown: 20, riskWrongArrest: 25,
+  riskEmptyInspect: 8, riskMeltdown: 20, riskWrongArrest: 40,
   riskSafeBelow: 15, // 이 미만이면 고소 판정 없음
+  riskGameOver: 100, // 리스크가 이 값에 닿으면 즉시 시험 중단
+  // 부감독관(NPC) 목격 판정
+  co: { range: 7, sightProb: 0.35, markDur: 6, minVis: 0.35 },
+  // 무고 학생 행동 간격(초)과 행동 중 닮은꼴 비율(나머지는 pen/look 같은 무해 행동)
+  innocentGap: { normal: [14, 26], distracted: [6, 12], hearing: [16, 28] },
+  innocentLookalikeShare: { normal: 0.3, distracted: 0.6, hearing: 0.5 },
+  lensGlowMax: 0.45, // AI 안경 빛샘 발광 세기 상한(proctor 가 세기에 곱함)
 };
 
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));

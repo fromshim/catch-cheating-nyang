@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   assignExaminees, evaluateEnding, DEVICES,
   stressStep, stressLevel, heatStep, calmStep, cheaterMul, innocentTellMul, parentRisk,
-  nervousSignProb, releaseNoEvidence, TUNE, INSPECT_PROB, inspectChance, inspectFound, signalVisibility,
+  nervousSignProb, releaseNoEvidence, coSpots, TUNE, INSPECT_PROB, inspectChance, inspectFound, signalVisibility,
 } from './logic.js';
 
 test('수험생 배정 수가 규칙대로다', () => {
@@ -87,7 +87,8 @@ test('innocentTellMul', () => {
 
 test('parentRisk 가중치와 클램프', () => {
   assert.equal(parentRisk({ emptyInspects: 0, meltdowns: 0, wrongArrests: 0 }), 0);
-  assert.equal(parentRisk({ emptyInspects: 1, meltdowns: 1, wrongArrests: 1 }), 53);
+  assert.equal(parentRisk({ emptyInspects: 1, meltdowns: 1, wrongArrests: 1 }), 68);
+  assert.equal(parentRisk({ emptyInspects: 0, meltdowns: 0, wrongArrests: 3 }), 100); // 40*3=120 -> 100
   assert.equal(parentRisk({ emptyInspects: 10, meltdowns: 10, wrongArrests: 10 }), 100);
 });
 
@@ -156,4 +157,26 @@ test('signalVisibility 경계값', () => {
   near(v('earbud', 0), 0); near(v('earbud', 10), 0); near(v('earbud', 20), 0.5);
   near(v('earbud', 30), 1); near(v('earbud', 90), 1); near(v('earbud', 180), 1);
   near(v('earbud', -150), 0.6); near(v('earbud', -90), 0);
+});
+
+test('replaced 는 최우선', () => {
+  const s = {
+    caught: [], wrongCaught: [{ id: 3, type: 'distracted' }], missed: [{ id: 5, device: 'camai' }],
+    hearingDamaged: true, empCount: 2, parentRisk: 100, riskRoll: 0, replaced: true,
+  };
+  assert.equal(evaluateEnding(s).id, 'replaced');
+  assert.equal(evaluateEnding(s).emp, true);
+  assert.equal(evaluateEnding({ ...s, replaced: false }).id, 'lawsuit');
+});
+
+test('coSpots 경계', () => {
+  assert.equal(coSpots('earbud', 180, 7, 0), true); // 등 뒤 earbud, range 경계
+  assert.equal(coSpots('earbud', 180, 7.01, 0), false);
+  assert.equal(coSpots('earbud', 180, 3, 0.34), true);
+  assert.equal(coSpots('earbud', 180, 3, 0.35), false);
+  assert.equal(coSpots('glasses', 0, 3, 0), false); // 정면 glasses vis 0
+  assert.equal(coSpots('camai', 0, 3, 0), true);
+  // minVis 경계: glasses lerp(m,20,45) = 0.35 -> m = 28.75, 약간 안/밖
+  assert.equal(coSpots('glasses', 29, 3, 0), true);
+  assert.equal(coSpots('glasses', 28, 3, 0), false);
 });

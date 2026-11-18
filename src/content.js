@@ -39,6 +39,7 @@ export const C = {
       '적발은 되돌릴 수 없다.',
     ],
     clickStart: '클릭하여 시작',
+    coNote: '뒤에 선 부감독관이 가끔 [!] 로 알려 준다 (가리킬 뿐, 증거는 아니다)',
     paused: '일시정지',
     clickResume: '클릭하여 계속',
     timeLeft: '남은 시간',
@@ -83,6 +84,9 @@ export const C = {
       emp: '전자기기 반응',
     },
     log: (id, text) => `${id}번: ${text}`,
+    coLog: (id) => `부감독관: ${id}번 쪽이 수상합니다`,
+    whisperChip: '(웅얼웅얼… 소리가 새어 나온다)',
+    gameOverCap: '학부모 항의 폭주 → 서열평가원, 감독관 교체',
     // 행동 → 결과 한 줄 캡션
     cap: {
       empty: (id, risk, heat, n) => `${id}번 빈손 검사 → 학부모 리스크 +${risk} · 경계도 +${heat}${n ? ` · 주변 ${n}명 긴장` : ''}`,
@@ -96,6 +100,7 @@ export const C = {
         none: `EMP → 반경 안 ${n}명이 움찔`,
       })[kind] + ` → 경계도 +${heat}`,
       codex: (name) => `도감 등록: ${name} (Esc)`,
+      co: (id) => `부감독관이 ${id}번 쪽을 가리킨다 [!]`,
     },
     // 일시정지 도감: 기기 신호 카드
     codex: {
@@ -137,6 +142,15 @@ export const C = {
   },
   // 엔딩 (감독관)
   endings: {
+    replaced: {
+      stamp: '교체',
+      title: '감독관 교체',
+      realityCard: null, // 아래에서 lawsuit_risk 카드를 재사용
+      body: [
+        '시험이 끝나기도 전에 항의 전화가 서열평가원 교환대를 마비시켰다. {wrongLine} {meltdownLine}',
+        '서열평가원은 "공정한 시험 관리를 위한 조치"라며 시험 도중 감독관을 교체했다. 당신은 복도로 나와 서야 했고, 고사실 문은 당신 없이 닫혔다.',
+      ],
+    },
     lawsuit: {
       stamp: '피소',
       title: '학부모 고소',
@@ -236,6 +250,7 @@ export const C = {
     released: (n) => `증거 불충분 석방 ${n}명`,
     directiveFollowed: (n) => `지침 이행: 안경 쓴 수험생 ${n}명 검사 → 지침은 철회됨`,
     directiveIgnored: '지침 불이행 기록됨',
+    wrongLine: (n) => (n ? `무고하게 내보낸 수험생은 ${n}명이었다.` : '내보낸 사람은 없었지만, 빈 가방을 열고 붉어진 얼굴을 만든 항의는 쌓였다.'),
     meltdownLine: (n) => (n ? `대신 고사실에는 멘붕한 수험생 ${n}명이 남았다.` : '멘붕한 수험생은 없었지만, 붉어진 얼굴들은 종이 울릴 때까지 가라앉지 않았다.'),
     probTitle: '소지품 검사 발견 확률',
     probNote: '작을수록 빠져나간다',
@@ -316,3 +331,4 @@ export const C = {
 
 // 교착 엔딩은 완벽한 감독 엔딩의 현실 카드를 그대로 쓴다
 C.endings.stalemate.realityCard = C.endings.perfect.realityCard;
+C.endings.replaced.realityCard = { ...C.endings.lawsuit_risk.realityCard, text: C.endings.lawsuit_risk.realityCard.text.replace('이 엔딩의 고소 상황은', '이 엔딩의 감독관 교체는') };

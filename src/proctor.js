@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import { audio } from './audio.js';
 import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
-import { buildClassroom, seatExaminees, animatePerson, seatPos, exitPath, autoResize, ROOM, SEAT_RADIUS } from './scene.js';
-import { assignExaminees, evaluateEnding, inspectChance, signalVisibility, mulberry32, TUNE, stressStep, stressLevel, heatStep, calmStep, cheaterMul, innocentTellMul, parentRisk, nervousSignProb, releaseNoEvidence } from './logic.js';
+import { buildClassroom, seatExaminees, createPerson, animatePerson, seatPos, exitPath, autoResize, ROOM, SEAT_RADIUS } from './scene.js';
+import { assignExaminees, evaluateEnding, inspectChance, signalVisibility, mulberry32, TUNE, stressStep, stressLevel, heatStep, calmStep, cheaterMul, innocentTellMul, parentRisk, nervousSignProb, releaseNoEvidence, coSpots } from './logic.js';
 import { C } from './content.js';
 
 const P = C.proctor;
@@ -22,6 +22,13 @@ export function startProctor({ renderer, ui, onEnd }) {
   const stopResize = autoResize(renderer, camera);
 
   const people = seatExaminees(scene, seed);
+  // 뒤에 선 부감독관 NPC: 교실 뒤를 가로로 오가며 학생들 등을 본다
+  const co = createPerson(rand, { color: 0x3b4252, proctor: true });
+  const coZ = ROOM.zMax - 1.3;
+  co.group.position.set(-4, 0, coZ);
+  co.walk = { pts: [[-4, coZ], [4, coZ]], i: 1, loop: true };
+  scene.add(co.group);
+  const marks = []; // 부감독관이 가리킨 학생 {e, el, until}
   const ex = assignExaminees(seed).map((e, i) => {
     const person = people[i];
     const s = seatPos(i);
@@ -40,7 +47,7 @@ export function startProctor({ renderer, ui, onEnd }) {
   let heat = 0, calmTime = 0, emptyInspects = 0, meltdowns = 0, inspectCd = 0, boldFired = false;
   const T0 = timeLeft, glassesChecked = new Set();
   let dStage = 0, dEnd = 0, bannerOff = 0;
-  let risk = 0, pulse = 0, aimKey = '', aimPrev = null, lastTick = 0, lastJ = null;
+  let whisperE = null, overTimer = 0, risk = 0, pulse = 0, aimKey = '', aimPrev = null, lastTick = 0, lastJ = null;
   const totalCheaters = ex.filter((e) => e.type === 'cheater').length;
   const riskOf = () => parentRisk({ emptyInspects, meltdowns, wrongArrests: state.wrongCaught.length });
   let running = false, started = false, ended = false, raf = 0;
@@ -62,6 +69,8 @@ export function startProctor({ renderer, ui, onEnd }) {
       <div class="cross"></div>
       <ul class="keys">${P.keys.map(([k, v]) => `<li data-k="${k}"><kbd>${k}</kbd>${v}</li>`).join('')}</ul>
       <div id="p-aim" class="aim" hidden></div>
+      <div id="p-wh" class="aim wh" hidden>${P.whisperChip}</div>
+      <div id="p-marks"></div>
       <div id="p-act" class="acthint" hidden>${P.actHint.replace(/(\[E\][^[]*)/, '<s>$1</s>')}<span id="p-hot" class="hot"></span></div>
       <div id="p-insp" class="insp" hidden><i><u></u></i><span>${P.inspecting}</span></div>
       <div id="p-caps" class="caps"></div>
@@ -71,11 +80,11 @@ export function startProctor({ renderer, ui, onEnd }) {
   const $ = (id) => ui.querySelector('#' + id);
   const hotSec = (e) => (e.lastSight !== null && t - e.lastSight <= TUNE.redHandedWindow ? Math.ceil(TUNE.redHandedWindow - (t - e.lastSight)) : 0);
   const ov = $('p-ov');
-  const showOverlay = (title, lines, btn) => {
+  const showOverlay = (title, lines, btn, note = '') => {
     ov.hidden = false;
-    ov.innerHTML = `<div class="panel"><h2>${title}</h2>${lines.map((l) => `<p>${l}</p>`).join('')}<p class="cta">${btn}</p></div>`;
+    ov.innerHTML = `<div class="panel"><h2>${title}</h2>${lines.map((l) => `<p>${l}</p>`).join('')}${note ? `<small class="note">${note}</small>` : ''}<p class="cta">${btn}</p></div>`;
   };
-  showOverlay(P.startTitle, P.startLines, P.clickStart);
+  showOverlay(P.startTitle, P.startLines, P.clickStart, P.coNote);
   ov.onclick = () => { audio.init(); audio.hum(true); controls.lock(); };
 
   // 포인터락이 안 되는 환경(헤드리스 등)이면 락 없이 그냥 진행한다.
@@ -97,6 +106,7 @@ export function startProctor({ renderer, ui, onEnd }) {
       <div class="cards">${Object.entries(X.cards).map(([d, c]) => `<div class="card">${seenDev.has(d) ? `<span class="stamp">${X.stamp}</span>` : ''}<h4>${c.name}</h4>
         <dl><dt>${X.f.real}</dt><dd>${c.real}</dd><dt>${X.f.like}</dt><dd>${c.like}</dd><dt>${X.f.where}</dt><dd>${c.where}</dd></dl><p class="memo">${c.memo}</p></div>`).join('')}</div>
       <p class="common">${X.common}</p>
+      <p class="common">${P.coNote}</p>
       <table>${P.keys.map(([k, v]) => `<tr><td><kbd>${k}</kbd></td><td>${v}</td></tr>`).join('')}</table>
       <dl class="gl">${X.gauges.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl></div>`;
     ov.querySelector('.panel').onclick = (ev) => ev.stopPropagation();
@@ -137,8 +147,8 @@ export function startProctor({ renderer, ui, onEnd }) {
       lastJ.li.lastChild.textContent = ` ×${++lastJ.n}`; return;
     }
     const li = document.createElement('li');
-    if (sus) li.className = 'sus';
-    li.append(P.log(id, text), document.createElement('em'));
+    if (sus) li.className = sus === true ? 'sus' : sus;
+    li.append(id ? P.log(id, text) : text, document.createElement('em'));
     lastJ = { id, text, li, n: 1 };
     logEl.prepend(li);
     while (logEl.children.length > 12) logEl.lastChild.remove();
@@ -175,6 +185,17 @@ export function startProctor({ renderer, ui, onEnd }) {
     const dur = real ? TUNE.signalDur[e.device] : TUNE.lookalikeDur;
     if (name) e.person.setGesture(name, t, dur);
     e.sig = { name, until: t + dur, real, sighted: false, neutral: false, ph: rand() * 6 };
+    if (real) coLook(e);
+  }
+  // 부감독관 시야: 플레이어와 같은 방위각 공식, 관찰자만 다르다. 가리킬 뿐 목격·현행범 기록은 건드리지 않는다
+  function coLook(e) {
+    const c = co.group.position, dx = c.x - e.pos.x, dz = c.z - e.pos.z;
+    if (!coSpots(e.device, Math.atan2(dx, -dz) * 180 / Math.PI, Math.hypot(dx, dz), rand())) return;
+    const m = marks.find((k) => k.e === e);
+    if (m) { m.until = t + TUNE.co.markDur; return; }
+    const el = document.createElement('div'); el.className = 'comark'; el.textContent = '[!]';
+    $('p-marks').append(el); marks.push({ e, el, until: t + TUNE.co.markDur });
+    journal(null, P.coLog(e.id), 'co'); cap(P.cap.co(e.id));
   }
   function schedule(e) {
     const cheating = e.type === 'cheater' && !e.deviceDead;
@@ -184,21 +205,20 @@ export function startProctor({ renderer, ui, onEnd }) {
       e.next = t + TUNE.signalDur[e.device] + (lo + rand() * (hi - lo)) / (cheaterMul(heat, calmTime).tell * (e.done ? TUNE.doneTellMul : 1));
       return;
     }
-    let names = ['pen', 'stretch', 'look'], lo = 8, hi = 16, div = innocentTellMul(e.stress);
-    if (cheating) { lo = 3; hi = 8; div = 1; } // 신호 사이의 무해 행동
-    else {
-      names = ['scratch', 'button', 'tilt', 'cock', ...names, ...(e.glasses ? ['frame', 'frame'] : [])];
-      if (e.type === 'distracted') { names = ['look', 'scratch', 'button', 'tilt', 'cock', ...(e.glasses ? ['frame'] : [])]; lo = 3; hi = 7; }
-      else if (e.type === 'hearing') { names = ['scratch', 'tilt', 'cock']; lo = 10; hi = 18; }
-      // 긴장한 학생은 닮은꼴 비율이 높아진다
-      if (rand() < nervousSignProb(e.stress)) names = ['scratch', 'button', 'tilt', 'cock', ...(e.glasses ? ['frame'] : [])];
+    let names = ['pen', 'stretch', 'look'], lo = 3, hi = 8, div = 1; // 신호 사이의 무해 행동
+    if (!cheating) {
+      const k = TUNE.innocentGap[e.type] ? e.type : 'normal';
+      [lo, hi] = TUNE.innocentGap[k]; div = innocentTellMul(e.stress);
+      const like = k === 'hearing' ? ['scratch', 'tilt', 'cock'] : ['scratch', 'button', 'tilt', 'cock', ...(e.glasses ? ['frame'] : [])];
+      // 긴장한 학생은 닮은꼴 비율이 높아진다. 나머지는 얌전한 행동(기지개는 드물게)
+      names = rand() < nervousSignProb(e.stress) || rand() < TUNE.innocentLookalikeShare[k] ? like : [...(rand() < 0.1 ? ['stretch'] : ['pen', 'look'])];
     }
     e.next = t + (lo + rand() * (hi - lo)) / div;
     start(e, pick(rand, names), false);
   }
   // 신호 진행: 발광·소리·목격 기록. 정체(진짜/닮은꼴)는 보이는 결과로만 구분된다
   function tickSignals(aimNow) {
-    let whisper = 0;
+    let whisper = 0; whisperE = null;
     for (const e of ex) {
       if (e.removed) continue;
       const kind = KIND[e.device], sg = e.sig;
@@ -209,8 +229,8 @@ export function startProctor({ renderer, ui, onEnd }) {
       if (sg.real) {
         const att = d > TUNE.glowDist ? 0 : 1 - d / TUNE.glowDist * 0.5;
         const blink = e.device === 'glasses' ? 1 : 0.6 + 0.4 * (0.5 + 0.5 * Math.sin((t + sg.ph) * 12));
-        e.person.setGlow(kind, vis * att * blink);
-        if (e.device === 'earbud' && d <= 2) whisper = Math.max(whisper, 1 - d / 2);
+        e.person.setGlow(kind, vis * att * blink * (e.device === 'glasses' ? TUNE.lensGlowMax : 1));
+        if (e.device === 'earbud' && d <= 2 && 1 - d / 2 > whisper) { whisper = 1 - d / 2; whisperE = e; }
       }
       if (aimNow !== e || d > TUNE.sightDist) continue;
       if (sg.real && vis >= 0.35 && !sg.sighted) {
@@ -290,7 +310,7 @@ export function startProctor({ renderer, ui, onEnd }) {
       if (e.type === 'cheater' && !e.deviceDead) {
         const kind = KIND[e.device];
         e.deviceDead = true; e.sig = null; e.person.setGlow(kind, 0); e.person.flashGlow(kind);
-        e.person.setGesture('emp_' + kind, t, 3);
+        e.person.setGesture('emp_' + kind, t, 3); e.person.setFace('panic', 3);
         e.stress = Math.min(100, e.stress + TUNE.stressEmpCheater);
         if (target === e) { e.empFlag = true; e.seen++; journal(e.id, P.signs.emp, true); }
       } else {
@@ -332,6 +352,7 @@ export function startProctor({ renderer, ui, onEnd }) {
     if (running && !ended) update(dt);
     ring.update(dt);
     for (const p of people) animatePerson(p, t, dt);
+    animatePerson(co, t, dt); co.group.rotation.y = 0; // 걷는 방향과 무관하게 정면은 -z
     renderer.render(scene, camera);
   }
 
@@ -421,6 +442,19 @@ export function startProctor({ renderer, ui, onEnd }) {
     hotEl.textContent = rc && hotSec(rc) ? P.hotHint(hotSec(rc)) : '';
     act.classList.toggle('cool', inspectCd > 0);
 
+    // 이어폰 소리 자막(무음 대응)과 부감독관 [!] 마커: 3D 위치를 화면에 투영
+    const proj = (el, pos, up) => {
+      v.copy(pos).add(new THREE.Vector3(0, up, 0)).project(camera);
+      el.hidden = v.z > 1;
+      el.style.left = ((v.x + 1) / 2) * innerWidth + 'px';
+      el.style.top = ((1 - v.y) / 2) * innerHeight + 'px';
+    };
+    const wh = $('p-wh'); wh.hidden = !whisperE;
+    if (whisperE) proj(wh, whisperE.pos, 0.45);
+    for (let k = marks.length - 1; k >= 0; k--) {
+      const m = marks[k];
+      if (t >= m.until || m.e.removed) { m.el.remove(); marks.splice(k, 1); } else proj(m.el, m.e.pos, 0.5);
+    }
     for (let k = caps.length - 1; k >= 0; k--) if ((caps[k].life -= dt) <= 0) caps.splice(k, 1)[0].el.remove();
     const sec = Math.max(0, Math.ceil(timeLeft)), low = timeLeft <= 30;
     const timeEl = $('p-time'), ts = `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
@@ -443,18 +477,29 @@ export function startProctor({ renderer, ui, onEnd }) {
     $('p-emp').parentNode.classList.toggle('ready', emp >= 100);
     qLi.classList.toggle('off', emp < 100);
     $('p-risk').style.width = risk + '%';
+    $('p-g-risk').classList.toggle('danger', risk >= 90);
     ring.preview(camera.position.x, camera.position.z, TUNE.empRadius, emp >= 100);
     setClock(Math.max(0, timeLeft / T0));
     if (t >= 30) ui.querySelector('.keys').classList.add('dim');
     if (low && sec !== lastTick && sec > 0) { lastTick = sec; audio.tick(1 - sec / 31); }
     audio.heartbeat(inspectT > 0 ? 0.6 + 0.4 * (inspectT / 2) : risk < 40 ? 0 : ((risk - 40) / 60) * 0.5);
+    if (risk >= TUNE.riskGameOver) return gameOver();
     if (timeLeft <= 0) finish();
+  }
+  // 학부모 항의 폭주로 즉시 종료: 붉은 화면 + 캡션 + 도장 소리, 잠시 뒤 엔딩
+  function gameOver() {
+    ended = true; state.replaced = true;
+    audio.stopAll(); audio.stamp();
+    $('p-vig').style.opacity = 1;
+    ov.hidden = false; ov.className = 'overlay over'; ov.onclick = null; ov.innerHTML = '';
+    capsEl.innerHTML = ''; cap(P.gameOverCap);
+    overTimer = setTimeout(finish, 2200);
   }
   frame();
 
   return {
     stop() {
-      cancelAnimationFrame(raf); ended = true; audio.stopAll();
+      cancelAnimationFrame(raf); clearTimeout(overTimer); ended = true; audio.stopAll();
       stopResize(); controls.unlock(); controls.dispose();
       removeEventListener('keydown', kd); removeEventListener('keyup', ku);
       document.removeEventListener('pointerlockerror', onLockErr);

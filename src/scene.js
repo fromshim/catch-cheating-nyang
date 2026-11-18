@@ -257,6 +257,7 @@ export function createPerson(rand, { color, proctor = false } = {}) {
   const eyeMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
   for (const ex of [-0.07, 0.07]) { const e = box(0.025, 0.025, 0.01, eyeMat); e.position.set(ex, 0.03, -0.185); head.add(e); }
   const mouth = box(0.1, 0.03, 0.01, mat(0x6b3a36)); mouth.position.set(0, -0.08, -0.183); head.add(mouth);
+  const brows = [-0.07, 0.07].map((bx) => { const b = box(0.06, 0.012, 0.01, eyeMat); b.position.set(bx, 0.07, -0.185); head.add(b); return b; });
   // 안경: 얇은 윗테 + 브리지 + 반투명 렌즈 두 장(다리 없음). 렌즈 앞면에 가산 초록 빛샘 평면
   const glasses = new THREE.Group(); glasses.visible = false; head.add(glasses);
   const frameMat = mat(0x222222);
@@ -264,11 +265,11 @@ export function createPerson(rand, { color, proctor = false } = {}) {
   const br = box(0.03, 0.012, 0.012, frameMat); br.position.set(0, 0.03, -0.2); glasses.add(br);
   const lensMat = new THREE.MeshBasicMaterial({ color: 0xaac4d4, transparent: true, opacity: 0.25, depthWrite: false, side: THREE.DoubleSide });
   const additive = (c, map) => new THREE.MeshBasicMaterial({ color: c, map, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false });
-  const lensGlowMat = additive(0x5cff8a), buttonGlowMat = additive(0xff4a3a, haloTex()), earGlowMat = additive(0x6ab8ff, haloTex());
-  const lensGlow = [];
+  const lensGlowMat = additive(0x6fdc95), buttonGlowMat = additive(0xff4a3a, haloTex()), earGlowMat = additive(0x6ab8ff, haloTex());
+  const lensGlow = [], lensGlowGeo = new THREE.PlaneGeometry(0.06, 0.042); // 렌즈의 60%, 아래쪽으로 치우침
   for (const lx of [-0.07, 0.07]) {
     const l = new THREE.Mesh(new THREE.PlaneGeometry(0.1, 0.07), lensMat); l.position.set(lx, 0.03, -0.198); glasses.add(l);
-    const lg = new THREE.Mesh(l.geometry, lensGlowMat); lg.position.set(lx, 0.03, -0.202); lg.visible = false; glasses.add(lg); lensGlow.push(lg);
+    const lg = new THREE.Mesh(lensGlowGeo, lensGlowMat); lg.position.set(lx, 0.012, -0.202); lg.visible = false; glasses.add(lg); lensGlow.push(lg);
   }
   // 오른쪽 귀(머리 +x 옆면) 이어폰 신호 점
   const earGlow = new THREE.Mesh(new THREE.PlaneGeometry(0.13, 0.13), earGlowMat);
@@ -278,7 +279,7 @@ export function createPerson(rand, { color, proctor = false } = {}) {
   for (const by of [1.3, 1.18, 1.06]) { const b = box(0.03, 0.03, 0.01, btnMat); b.position.set(0, by, -0.143); g.add(b); }
   const btnGlow = new THREE.Mesh(new THREE.PlaneGeometry(0.13, 0.13), buttonGlowMat);
   btnGlow.position.set(0, 1.18, -0.152); btnGlow.visible = false; g.add(btnGlow);
-  const glows = { lens: { mat: lensGlowMat, objs: lensGlow, c: 0x5cff8a }, button: { mat: buttonGlowMat, objs: [btnGlow], c: 0xff4a3a }, ear: { mat: earGlowMat, objs: [earGlow], c: 0x6ab8ff } };
+  const glows = { lens: { mat: lensGlowMat, objs: lensGlow, c: 0x6fdc95 }, button: { mat: buttonGlowMat, objs: [btnGlow], c: 0xff4a3a }, ear: { mat: earGlowMat, objs: [earGlow], c: 0x6ab8ff } };
   for (const k in glows) Object.assign(glows[k], { v: 0, flash: 0 });
 
   // 팔: 어깨 피벗 > 위팔 > 팔꿈치 피벗 > 아래팔
@@ -300,12 +301,13 @@ export function createPerson(rand, { color, proctor = false } = {}) {
   }
 
   const p = {
-    group: g, head, R, L, RL, LL, mouth, glasses, sparks, glows,
+    group: g, head, R, L, RL, LL, mouth, brows, face: null, glasses, sparks, glows,
     pose: { ...REST },
     stress: 0,
     gesture: null, // {name, start, end}
     walk: null,    // {pts, i, onDone}
     phase: rand() * 10,
+    now: 0,
     setGesture(name, now, dur) { p.gesture = { name, start: now, end: now + dur }; },
     // 긴장 홍조: 머리 피부색을 원래 색에서 붉은색으로 보간(Color 재사용, 할당 없음)
     setStress(v) {
@@ -314,6 +316,8 @@ export function createPerson(rand, { color, proctor = false } = {}) {
       skin.color.copy(skin0).lerp(BLUSH, r);
       skin.emissive.copy(BLUSH).multiplyScalar(0.45 * r);
     },
+    // name: 'neutral' | 'panic'. panic 은 dur 초 뒤 animatePerson 이 neutral 로 되돌린다(now 기준 end)
+    setFace(name, dur = 0) { p.face = name === 'panic' ? { end: p.now + dur } : null; },
     setGlow(kind, v) { glows[kind].v = v; },
     flashGlow(kind) { glows[kind].flash = 0.25; },
     setHighlight(on) { cloth.emissive.setHex(on ? 0x333333 : 0); },
@@ -327,8 +331,10 @@ export function createPerson(rand, { color, proctor = false } = {}) {
 export function animatePerson(p, now, dt) {
   if (!p.group.visible) return;
   const t = now + p.phase;
+  p.now = now;
+  if (p.face && now > p.face.end) p.face = null;
   const tgt = { ...REST };
-  let jitter = 0, mouth = 1, sparks = false;
+  let jitter = 0, mouth = 1, sparks = false, brow = 0, ps_f = 10;
   tgt.hx += Math.sin(t * 0.8) * 0.04;
   tgt.hy = Math.sin(t * 0.3) * 0.08;
 
@@ -363,13 +369,14 @@ export function animatePerson(p, now, dt) {
         case 'tilt': Object.assign(tgt, { rs: 1.7, re: 2.25, rz: -0.9, hy: 0, hz: -0.4 }); break; // 손 (0.25,1.67,-0.02) 귀 덮기, 오른쪽 어깨로 기움
         case 'cock': Object.assign(tgt, { hy: 0.15, hz: -0.4 }); break; // 손 없이 고개만 오른쪽으로 갸웃
         case 'scratch': Object.assign(tgt, { rs: 1.9, re: 2.05 + Math.sin(k * 18) * 0.12, rz: -0.5 }); break; // 손 (0.25,1.72,-0.02) 귀 근처 왕복
-        case 'emp_ear': Object.assign(tgt, { rs: 1.6, re: 2.3, rz: -1.2, hz: -0.2, by: SEAT_Y + Math.abs(Math.sin(k * 30)) * 0.03 }); jitter = 0.05; sparks = true; break;
-        case 'emp_lens': Object.assign(tgt, { rs: 1.45, re: 1.55, rz: -0.75, ls: 1.55, le: 1.45, lz: 0.55, hx: 0.1 }); jitter = 0.03; sparks = true; break; // 양손 (±0.13,1.70,-0.25)
-        case 'emp_button': Object.assign(tgt, { rs: 0, re: 1.25, rz: -0.7, ls: 0, le: 1.25, lz: 0.55, hx: -0.6 }); jitter = 0.03; sparks = true; break; // 양손 (±0.1,1.12,-0.29)
+        case 'emp_ear': Object.assign(tgt, { rs: 1.6, re: 2.3, rz: -1.2, hz: -0.2, by: SEAT_Y + Math.abs(Math.sin(k * 30)) * 0.03 }); jitter = 0.05; sparks = true; ps_f = 30; break;
+        case 'emp_lens': Object.assign(tgt, { rs: 1.45, re: 1.55, rz: -0.75, ls: 1.55, le: 1.45, lz: 0.55, hx: 0.1 }); jitter = 0.03; sparks = true; ps_f = 30; break; // 양손 (±0.13,1.70,-0.25)
+        case 'emp_button': Object.assign(tgt, { rs: 0, re: 1.25, rz: -0.7, ls: 0, le: 1.25, lz: 0.55, hx: -0.6 }); jitter = 0.03; sparks = true; ps_f = 30; break; // 양손 (±0.1,1.12,-0.29)
         case 'look': tgt.hy = Math.sin(k * 4) * 0.9; tgt.hx = 0; break;
         case 'stretch': Object.assign(tgt, { rs: 3.0, ls: 3.0, re: 0.1, le: 0.1, hx: 0.25 }); break;
         case 'slump': { // 책상에 엎드려 흐느낌
           const sob = Math.max(0, Math.sin(k * 7)) * Math.max(0, Math.sin(k * 0.9));
+          brow = -0.45; // 눈썹 처짐
           Object.assign(tgt, { hx: -1.1, hy: 0, rs: 1.4, ls: 1.4, re: 1.6, le: 1.6, by: SEAT_Y + sob * 0.03 });
           break;
         }
@@ -378,7 +385,10 @@ export function animatePerson(p, now, dt) {
       }
     }
   }
-  const f = Math.min(1, dt * 10), ps = p.pose;
+  if (p.face) { // 당황: 八자 눈썹, 입 크게 벌림+떨림, 머리 떨림
+    brow = 0.5; mouth = 3.5 + Math.sin(now * 40) * 0.4; jitter = Math.max(jitter, 0.04);
+  }
+  const f = Math.min(1, dt * ps_f), ps = p.pose;
   for (const k in tgt) ps[k] += (tgt[k] - ps[k]) * f;
   p.R.sh.rotation.set(ps.rs, 0, ps.rz); p.R.el.rotation.x = ps.re;
   p.L.sh.rotation.set(ps.ls, 0, ps.lz); p.L.el.rotation.x = ps.le;
@@ -387,6 +397,8 @@ export function animatePerson(p, now, dt) {
   p.head.rotation.set(ps.hx, ps.hy, ps.hz);
   p.group.position.y = ps.by;
   p.mouth.scale.y = mouth;
+  p.brows[0].rotation.z = brow; p.brows[1].rotation.z = -brow; // 안쪽 끝이 위(+)면 八자
+  p.brows[0].position.y = p.brows[1].position.y = 0.07 + brow * 0.03;
   for (const k in p.glows) { // 발광: 평소 v, EMP 맞으면 0.25초 하얗고 크게 번쩍
     const o = p.glows[k], fl = o.flash > 0;
     if (fl) o.flash -= dt;
