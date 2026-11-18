@@ -50,6 +50,7 @@ export function startProctor({ renderer, ui, onEnd }) {
       </div>
       <div class="journal"><h3>${P.journal}</h3><ul id="p-log"><li class="empty">${P.journalEmpty}</li></ul></div>
       <div class="cross"></div>
+      <ul class="keys">${P.keys.map(([k, v]) => `<li><kbd>${k}</kbd>${v}</li>`).join('')}</ul>
       <div id="p-aim" class="aim" hidden></div>
       <div id="p-insp" class="insp" hidden><i><u></u></i><span>${P.inspecting}</span></div>
       <div id="p-toast" class="toast"></div>
@@ -226,6 +227,7 @@ export function startProctor({ renderer, ui, onEnd }) {
     $('p-emp').style.width = emp + '%';
     $('p-emp-l').textContent = emp >= 100 ? P.empReady : P.emp;
     $('p-emp').parentNode.classList.toggle('ready', emp >= 100);
+    ui.querySelector('.keys li:nth-child(5)').classList.toggle('off', emp < 100);
     $('p-comp').style.width = complaint + '%';
     if (timeLeft <= 0) finish();
   }

@@ -39,6 +39,7 @@ export const C = {
     timeLeft: '남은 시간',
     emp: 'EMP',
     empReady: 'EMP (Q 발사)',
+    keys: [['WASD', '이동'], ['마우스', '시선'], ['E 홀드', '소지품 검사 (2m)'], ['F', '적발 (2m)'], ['Q', 'EMP (게이지 100)'], ['Esc', '일시정지']],
     complaint: '민원',
     empCount: '전파법 감사',
     journal: '감독 일지',
@@ -182,7 +183,7 @@ export const C = {
     progress: '답안 진척',
     suspicion: '의심',
     using: '기기 사용 중...',
-    hint: 'Space 홀드: 기기 사용',
+    keys: [['마우스', '둘러보기'], ['Space 홀드', '기기 사용'], ['Esc', '일시정지']],
     endings: {
       caught: {
         title: '부정행위 적발',

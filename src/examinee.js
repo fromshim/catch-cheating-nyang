@@ -44,8 +44,8 @@ export function startExaminee({ renderer, ui, onEnd }) {
   ui.innerHTML = `<div class="hud examinee"><div class="hud-top"><span>${E.timeLeft} <b id="e-time">120</b></span></div>
     <div class="gauges">
       <div class="gauge"><label>${E.progress}</label><i><u id="e-prog"></u></i></div>
-      <div class="gauge warn"><label>${E.suspicion}</label><i><u id="e-susp"></u></i></div>
-      <div class="gauge-note">${E.hint}</div></div>
+      <div class="gauge warn"><label>${E.suspicion}</label><i><u id="e-susp"></u></i></div></div>
+    <ul class="keys">${E.keys.map(([k, v]) => `<li><kbd>${k}</kbd>${v}</li>`).join('')}</ul>
     <div id="e-use" class="usefx" hidden>${E.using}</div><div class="cross"></div>
     <div id="e-ov" class="overlay"></div></div>`;
   const $ = (id) => ui.querySelector('#' + id);
