@@ -41,7 +41,7 @@ export function startExaminee({ renderer, ui, onEnd }) {
   let t = 0, timeLeft = Number(new URLSearchParams(location.search).get("t")) || 120, // 개발용: ?t=5 로 시험 시간 단축
     progress = 0, susp = 0, using = false;
 
-  ui.innerHTML = `<div class="hud examinee"><div class="hud-top"><span>${E.timeLeft} <b id="e-time">120</b></span></div>
+  ui.innerHTML = `<div class="hud examinee"><div class="hud-center"><b id="e-time">120</b><span>${E.timeLeft}</span></div>
     <div class="gauges">
       <div class="gauge"><label>${E.progress}</label><i><u id="e-prog"></u></i></div>
       <div class="gauge warn"><label>${E.suspicion}</label><i><u id="e-susp"></u></i></div></div>
