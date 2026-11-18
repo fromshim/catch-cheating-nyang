@@ -10,10 +10,11 @@ const SLOTS = [
   { k: 'inspect', x: 708, y: 118, line: '580,182 640,134 700,134' },
   { k: 'arrest', x: 708, y: 242, line: '660,258 700,258' },
   { k: 'move', c: 1, x: 404, y: 306, line: '412,290 412,296 596,296 596,290' },
+  { k: 'look', x: 722, y: 38, line: '706,56 716,56', dot: [706, 56] }, // labels.look 이 있을 때만 마우스와 함께 그린다
 ];
 const DOTS = [[300, 98], [396, 194], [580, 182], [660, 258]];
 
-// labels: { esc, emp, inspect, arrest, move } 각 { t, c?, d?: [줄...] }. compact 는 제목만, 도감용
+// labels: { esc, emp, inspect, arrest, move, look? } 각 { t, c?, d?: [줄...] }. compact 는 제목만, 도감용
 export function kbd(labels, { compact = false } = {}) {
   const lab = ({ k, r, c, x, y }) => {
     const { t = '', c: cond = '', d = [] } = labels[k] || {};
@@ -21,9 +22,11 @@ export function kbd(labels, { compact = false } = {}) {
     const i = cond ? `<i>${cond}</i>` : '';
     return `<div class="hk-l${r ? ' r' : ''}" style="${pos};top:${y}px">${r ? i : ''}<b>${t}</b>${r ? '' : i}${compact ? '' : d.map((s) => `<span>${s}</span>`).join('')}</div>`;
   };
-  const fig = `<div class="hk-kf"><svg viewBox="0 0 960 340">${SLOTS.map((s) => `<polyline points="${s.line}"/>`).join('')}<polyline points="504,296 504,304"/>${DOTS.map(([x, y]) => `<circle cx="${x}" cy="${y}" r="3"/>`).join('')}</svg>
+  const slots = SLOTS.filter((s) => s.k !== 'look' || labels.look), dots = [...DOTS, ...(labels.look ? [SLOTS.at(-1).dot] : [])];
+  const fig = `<div class="hk-kf"><svg viewBox="0 0 960 340">${slots.map((s) => `<polyline points="${s.line}"/>`).join('')}<polyline points="504,296 504,304"/>${dots.map(([x, y]) => `<circle cx="${x}" cy="${y}" r="3"/>`).join('')}</svg>
     ${KEYS.map(([k, x, y, c]) => `<kbd class="${c || ''}" style="left:${x}px;top:${y}px">${k}</kbd>`).join('')}
-    ${SLOTS.map(lab).join('')}
+    ${labels.look ? '<div class="hk-mouse" style="left:650px;top:10px"></div>' : ''}
+    ${slots.map(lab).join('')}
   </div>`;
   return `<div class="hk-kfw">${compact ? `<div class="hk-kfc">${fig}</div>` : fig}</div>`;
 }

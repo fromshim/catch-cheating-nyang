@@ -48,3 +48,7 @@
 @media (prefers-reduced-motion: reduce) {
   .hk-bust .glow, .hk-stk s.new, .hk-stk.danger { animation: none; }
 }
+/* 마우스 그림: 시점 이동 */
+.hk-kf .hk-mouse { position: absolute; width: 56px; height: 90px; background: #F4F1E6; border-radius: 28px 28px 22px 22px; border-bottom: 5px solid #bfb89f; }
+.hk-kf .hk-mouse::before { content: ''; position: absolute; left: 27px; top: 0; width: 2px; height: 34px; background: #1B1F24; opacity: .35; }
+.hk-kf .hk-mouse::after { content: ''; position: absolute; left: 23px; top: 10px; width: 10px; height: 16px; border-radius: 5px; background: #1B1F24; opacity: .6; }
