@@ -71,6 +71,32 @@
 
 ---
 
+### A-4. 추가 조사 (2026-11-18): 시계 규정, 위장 스마트워치, AI 안경 빛샘
+
+플레이테스트 뒤 범인 신호를 다시 설계하면서 확인한 내용이다. 원문을 열어 확인한 것은 `[원문]`, 검색 요약만 본 것은 `[검색요약]`으로 표시했다.
+
+**수능 시계 규정과 스마트워치**
+- 허용 시계는 "결제·통신기능(블루투스 등) 및 전자식 화면표시기(LCD, LED 등)가 모두 없는 시침, 분침(초침)이 있는 아날로그 시계"뿐이다. 스마트워치 등 웨어러블은 금지 목록에 있다. [원문] https://www.moe.go.kr/sub/infoRenew.do?m=011301
+- 2016학년도 수능부터 통신기능·전자식 화면이 있는 시계를 모두 금지했다. [원문] https://www.ajunews.com/view/20161114124439395 (2016-11-14)
+- 1·3교시 시작 전 시계를 신분증·수험표와 함께 책상 위에 올려놓게 하고 감독관이 뒷면까지 점검한다. [원문] 위 교육부 안내문, ajunews 기사
+- 2022~2026학년도 미제출 전자기기 적발은 휴대전화 113건, 전자시계 107건이다. 스마트워치를 따로 센 수치는 없다. [원문] https://www.imaeil.com/page/view/2026101006511731022 (2026-10-10)
+- 아날로그로 위장한 커닝 시계(평소 바늘 시계 화면, 버튼을 누르면 저장한 텍스트 표시, 감독관 접근 시 시간만 표시하는 비상 버튼)는 해외 제품 보도가 있다. [원문] https://www.infopackets.com/news/10337/exams-plagued-cheater-wristwatches (2018-05-17), https://www.sciencealert.com/students-are-using-smart-spy-technology-to-cheat-in-exams (2016-05-17)
+- 태국 랑싯대 의대 입시(2016-05)에서 안경 카메라로 문제를 찍고 스마트워치로 답을 받은 사건이 있었다. [검색요약] https://www.upi.com/Odd_News/2016/05/10/High-tech-cheating-scandal-leads-Thai-university-to-cancel-exams/7701462902472/
+- 국내에서 위장 스마트워치를 시험 중 사용하다 적발된 사례는 찾지 못했다(미확인).
+- 게임 반영: 국내 근거가 없고 현실의 적발 지점이 시험 전 점검이라, 감독관 모드 기기에서 스마트워치를 뺐다.
+
+**AI 안경 렌즈 빛샘**
+- 회절 도파관식 AR 안경은 영상광 일부가 렌즈 앞면으로 샌다(eye glow, front light leakage). 제조사 지원 문서는 시판 도파관 안경 거의 전부가 정도만 다르게 겪는다고 설명한다. [검색요약] https://support.evenrealities.com/hc/en-us/articles/15299939850511-Visible-green-glow-on-the-front-of-the-lenses
+- Even Realities G1은 정면에서는 빛샘이 거의 없고, 착용자가 머리를 젖히거나 관찰자가 비스듬히 볼 때 보인다. [원문] https://kguttag.com/2024/08/18/even-realities-g1-minimalist-ar-glasses-with-integrated-prescription-lenses/ (2024-08-18)
+- 고급 모델은 빛샘을 줄였다. Meta Ray-Ban Display는 외부 누광 약 2%로 밝힌다. [원문] https://roadtovr.com/hands-on-meta-ray-ban-display-glasses-neural-band-offer-a-glimpse-of-future-ar-glasses/ (2025-09-17)
+- 도파관이 다른 각도에서 만드는 빛샘·반사로 스마트 안경을 탐지하는 연구가 있다(Duke, HotMobile 2026). [원문] https://comphealth.duke.edu/publications/no-guide-no-cheat-detecting-smart-glasses-via-ar-optical-signatures/
+- 중국 화난농업대 시험에서 감독관이 2~3분 지켜본 뒤 렌즈가 특정 각도에서 초록빛을 내는 것을 보고 퇴장시켰다. [원문] https://global.hk01.com/大国小事/60367882/ai眼镜侵入内地考场-碰镜腿即拍照搜题-考生镜片透绿光被逮 (2026-07-08)
+- 한국 소방설비기사 시험(광주)에서 감독관이 렌즈에 비친 이상한 빛을 알아채 AI 안경 부정행위 첫 형사 고발로 이어졌다(연도 미표기). [원문] https://www.koreajoongangdaily.com/korea/korea-files-first-criminal-charge-over-cheating-using-ai-smart-glassesnbsp/12771828
+- 2026년 내신 AI 안경 적발 4건 중 3건은 안경테를 계속 만지는 행동이 계기였다. [원문] https://www.wikitree.co.kr/articles/1173044 (2026-11-09)
+- 촬영 표시등(Ray-Ban Meta 계열)은 흰색이고, 이를 스티커로 가린다는 증언이 있다. [원문] https://meta.com/smart-glasses/privacy/ , 위 HK01 기사
+- 게임 반영: AI 안경 신호는 깜빡이는 LED가 아니라 비스듬한 각도에서만 렌즈에 은은하게 비치는 초록빛으로 둔다. 도감에는 "기기 모델과 보는 각도에 따라 안 보일 수 있다"를 적는다.
+- 미확인: 단색 녹색 microLED만의 특이성, Xreal·INMO의 외부 가시성, 리뷰 기사(CNET, The Verge, Engadget의 Rokid·Meta 평) 원문과 날짜.
+
 ## B. 3D 웹게임 기술 선택
 
 ### B-1. 엔진 선택
