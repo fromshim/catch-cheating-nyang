@@ -265,7 +265,7 @@ export function createPerson(rand, { color, proctor = false } = {}) {
   const br = box(0.03, 0.012, 0.012, frameMat); br.position.set(0, 0.03, -0.2); glasses.add(br);
   const lensMat = new THREE.MeshBasicMaterial({ color: 0xaac4d4, transparent: true, opacity: 0.25, depthWrite: false, side: THREE.DoubleSide });
   const additive = (c, map) => new THREE.MeshBasicMaterial({ color: c, map, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false });
-  const lensGlowMat = additive(0x6fdc95), buttonGlowMat = additive(0xff4a3a, haloTex()), earGlowMat = additive(0x6ab8ff, haloTex());
+  const lensGlowMat = additive(0x6fdc95), buttonGlowMat = additive(0xff5a3c, haloTex()), earGlowMat = additive(0x5aa8ff, haloTex());
   const lensGlow = [], lensGlowGeo = new THREE.PlaneGeometry(0.06, 0.042); // 렌즈의 60%, 아래쪽으로 치우침
   for (const lx of [-0.07, 0.07]) {
     const l = new THREE.Mesh(new THREE.PlaneGeometry(0.1, 0.07), lensMat); l.position.set(lx, 0.03, -0.198); glasses.add(l);
@@ -274,12 +274,12 @@ export function createPerson(rand, { color, proctor = false } = {}) {
   // 오른쪽 귀(머리 +x 옆면) 이어폰 신호 점
   const earGlow = new THREE.Mesh(new THREE.PlaneGeometry(0.13, 0.13), earGlowMat);
   earGlow.position.set(0.2, 0, 0); earGlow.rotation.y = Math.PI / 2; earGlow.visible = false; head.add(earGlow);
-  // 가슴 단추 3개(세로). 가운데 단추 위에 초소형 카메라 신호 점
+  // 가슴 단추 3개(세로). 맨 위 단추(칼라 쪽, 책상에 안 가림) 위에 초소형 카메라 신호 점
   const btnMat = mat(new THREE.Color(cloth.color).multiplyScalar(0.55).getHex());
   for (const by of [1.3, 1.18, 1.06]) { const b = box(0.03, 0.03, 0.01, btnMat); b.position.set(0, by, -0.143); g.add(b); }
-  const btnGlow = new THREE.Mesh(new THREE.PlaneGeometry(0.13, 0.13), buttonGlowMat);
-  btnGlow.position.set(0, 1.18, -0.152); btnGlow.visible = false; g.add(btnGlow);
-  const glows = { lens: { mat: lensGlowMat, objs: lensGlow, c: 0x6fdc95 }, button: { mat: buttonGlowMat, objs: [btnGlow], c: 0xff4a3a }, ear: { mat: earGlowMat, objs: [earGlow], c: 0x6ab8ff } };
+  const btnGlow = new THREE.Mesh(new THREE.PlaneGeometry(0.2, 0.2), buttonGlowMat);
+  btnGlow.position.set(0, 1.3, -0.152); btnGlow.visible = false; g.add(btnGlow);
+  const glows = { lens: { mat: lensGlowMat, objs: lensGlow, c: 0x6fdc95 }, button: { mat: buttonGlowMat, objs: [btnGlow], c: 0xff5a3c }, ear: { mat: earGlowMat, objs: [earGlow], c: 0x5aa8ff } };
   for (const k in glows) Object.assign(glows[k], { v: 0, flash: 0 });
 
   // 팔: 어깨 피벗 > 위팔 > 팔꿈치 피벗 > 아래팔
@@ -430,3 +430,31 @@ export const exitPath = (i) => {
   const s = seatPos(i);
   return [[s.x, s.z + 0.5], [DOOR.x, s.z + 0.5], [DOOR.x, DOOR.z]];
 };
+
+// 엔딩용 범인 초상. list: [{color, device:'set'|'glasses'}] -> dataURL 배열. 오프스크린 렌더러를 따로 만들어 쓰고 정리한다
+export function renderPortraits(list, size = 220) {
+  const r = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+  r.setSize(size, size, false); r.setPixelRatio(1);
+  const scene = new THREE.Scene();
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x8a8f99, 1.6));
+  const sun = new THREE.DirectionalLight(0xffffff, 1.6); sun.position.set(-1.5, 3, -4); scene.add(sun);
+  const desk = box(1.4, 0.05, 0.7, mat(0xb89b72)); desk.position.set(0, 0.72, -0.55); scene.add(desk);
+  const cam = new THREE.PerspectiveCamera(32, 1, 0.1, 20);
+  const a = 35 * Math.PI / 180;
+  cam.position.set(Math.sin(a) * 2.3, 1.45, -Math.cos(a) * 2.3); cam.lookAt(0, 1.0, 0);
+  const rand = mulberry32(7), urls = [];
+  for (const { color, device } of list) {
+    const p = createPerson(rand, { color });
+    p.group.position.set(0, 0, 0); scene.add(p.group);
+    if (device === 'glasses') { p.glasses.visible = true; p.setGlow('lens', 1); }
+    else { p.setGlow('button', 1); p.setGlow('ear', 1); p.setGesture('cock', 0, 99); }
+    animatePerson(p, 0.1, 1); // dt=1 이라 포즈가 즉시 붙는다
+    r.render(scene, cam);
+    urls.push(r.domElement.toDataURL('image/png'));
+    scene.remove(p.group);
+    p.group.traverse((o) => { if (o.isMesh) { o.geometry.dispose(); o.material.dispose(); } });
+  }
+  desk.geometry.dispose(); desk.material.dispose();
+  r.dispose(); r.forceContextLoss();
+  return urls;
+}

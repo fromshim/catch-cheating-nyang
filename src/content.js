@@ -6,6 +6,7 @@ export const EXAM_SHORT = '인능';
 export const ORG = '국가서열평가원';
 export const MINISTRY = '교육서열부';
 const SHORT_ORG = '서열평가원';
+const SOFT = '목격 기록 있음, 판정은 시험 후';
 
 export const C = {
   menu: {
@@ -28,6 +29,7 @@ export const C = {
     watch: '스마트워치',
     earbud: '무선이어폰',
     camai: '초소형카메라+AI',
+    set: '카메라+이어폰 세트',
     glasses: 'AI안경',
   },
   // 감독관 모드
@@ -68,7 +70,7 @@ export const C = {
     signs: {
       sight: {
         glasses: '렌즈에 초록빛이 비침',
-        camai: '가슴 단추가 붉게 깜빡임',
+        camai: '가슴 맨 위 단추가 붉게 깜빡임',
         earbud: '고개를 기울인 채 멈춤, 귀에 파란 점, 무언가 새어 나오는 소리',
       },
       like: {
@@ -93,7 +95,7 @@ export const C = {
       found: (id, dev, heat, n) => `${id}번 책상 아래에서 ${dev} 발견 → 적발(F)하십시오 · 경계도 +${heat}${n ? ` · 주변 ${n}명 긴장` : ''}`,
       meltdown: (id, risk) => `${id}번 멘붕 → 학부모 리스크 +${risk}`,
       bold: '교실이 조용하다 → 범인들이 대담해진다',
-      caughtRight: (id, heat, n, evidence) => `${id}번 부정행위 적발, 퇴실 → EMP 충전 · 경계도 +${heat}${n ? ` · 주변 ${n}명 긴장` : ''}${evidence ? '' : ' · 증거 없음, 판정은 시험 후'}`,
+      caughtRight: (id, heat, n, evidence) => `${id}번 부정행위 적발, 퇴실 → EMP 충전 · 경계도 +${heat}${n ? ` · 주변 ${n}명 긴장` : ''}${evidence === 'hard' ? '' : ` · ${evidence === 'soft' ? SOFT : '증거 없음, 판정은 시험 후'}`}`,
       caughtWrong: (id, risk, heat, n) => `${id}번 오적발, 수험생 "저 아무것도 안 했는데요…" → 학부모 리스크 +${risk} · 경계도 +${heat}${n ? ` · 주변 ${n}명 긴장` : ''}`,
       emp: (kind, heat, n) => ({
         hearing: `EMP → 반경 안 ${n}명이 움찔, 의료기기가 손상되었습니다`,
@@ -107,12 +109,12 @@ export const C = {
       title: '기기 신호 도감',
       stamp: '목격',
       common: '기기 모델과 보는 각도에 따라 안 보일 수 있다.',
+      evidence: '증거는 세 단계다. 기기 발견·EMP 반응은 확정, 목격만 있으면 시험 후 판정(석방될 수 있다), 아무것도 없으면 더 쉽게 석방된다.',
       resume: '계속',
       f: { real: '진짜 신호', like: '닮은꼴(무고도 함)', where: '잘 보이는 방향' },
       cards: {
         glasses: { name: 'AI 안경', real: '렌즈 자체에 초록빛 빛샘', like: '안경테를 만짐', where: '비스듬한 각도 (정면에선 안 보임)', memo: '안경을 고쳐 쓰는 건 그냥 시력이 나쁜 겁니다.' },
-        earbud: { name: '무선이어폰', real: '귀의 파란 점, 2m 안에서 새는 소리', like: '귀 뒤를 긁음, 귀에 손을 댐, 고개를 갸웃함', where: '오른쪽·뒤', memo: '귀가 가려운 건 죄가 아닙니다.' },
-        camai: { name: '초소형카메라+AI', real: '가슴 단추의 붉은 반짝임', like: '단추를 만지작거림', where: '정면', memo: '단추를 만지는 건 긴장해서일 수도 있습니다.' },
+        set: { name: '세트(초소형 카메라 + 이어폰)', real: '정면: 맨 위 단추 붉은 빛(촬영) → 몇 초 뒤 옆·뒤: 귀 파란 빛, 가까이선 새는 소리(수신)', like: '단추를 만지작거림, 귀 뒤를 긁음, 귀에 손을 댐, 고개를 갸웃함', where: '카메라는 정면, 이어폰은 오른쪽·뒤', memo: '중계기까지 한 세트로 팝니다. 다들 정말 작습니다.' },
       },
       gauges: [
         ['긴장', '학생별 긴장. 높으면 멘붕하고 학부모 리스크가 오른다.'],
@@ -255,6 +257,13 @@ export const C = {
     probTitle: '소지품 검사 발견 확률',
     probNote: '작을수록 빠져나간다',
     reality: '현실 카드',
+    seatTitle: '좌석 배치도',
+    board: '칠판',
+    seatStatus: { caught: '검거', released: '석방', missed: '놓침', wrong: '오적발', meltdown: '멘붕' },
+    hearingTag: '보청기',
+    seatLegend: '범인 칸은 기기와 결과, 붉은 X는 오적발, 멘붕과 보청기 학생도 표시했다.',
+    portraitTitle: '범인 초상',
+    portrait: (id, dev, st) => `${id}번 · ${dev} · ${st}`,
     memo: '경 위 서',
     again: '다시하기',
     menu: '메뉴로',

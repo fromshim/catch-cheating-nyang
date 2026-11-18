@@ -1,12 +1,12 @@
 import * as THREE from 'three';
 import { audio } from './audio.js';
 import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
-import { buildClassroom, seatExaminees, createPerson, animatePerson, seatPos, exitPath, autoResize, ROOM, SEAT_RADIUS } from './scene.js';
+import { buildClassroom, seatExaminees, createPerson, animatePerson, seatPos, exitPath, autoResize, renderPortraits, ROOM, SEAT_RADIUS } from './scene.js';
 import { assignExaminees, evaluateEnding, inspectChance, signalVisibility, mulberry32, TUNE, stressStep, stressLevel, heatStep, calmStep, cheaterMul, innocentTellMul, parentRisk, nervousSignProb, releaseNoEvidence, coSpots } from './logic.js';
 import { C } from './content.js';
 
 const P = C.proctor;
-const KIND = { camai: 'button', earbud: 'ear', glasses: 'lens' }; // 기기 → 발광 부위
+const GLOW = { camai: 'button', earbud: 'ear', glasses: 'lens' }; // 신호 kind → 발광 부위
 // 진짜 신호 몸짓은 발광 부위(단추·귀)를 손으로 가리지 않는다. 손 대는 동작은 닮은꼴 몫
 const REAL_GESTURE = { camai: () => null, earbud: () => 'cock', glasses: (r) => (r() < 0.5 ? 'frame' : null) };
 const pick = (r, a) => a[Math.floor(r() * a.length)];
@@ -106,6 +106,7 @@ export function startProctor({ renderer, ui, onEnd }) {
       <div class="cards">${Object.entries(X.cards).map(([d, c]) => `<div class="card">${seenDev.has(d) ? `<span class="stamp">${X.stamp}</span>` : ''}<h4>${c.name}</h4>
         <dl><dt>${X.f.real}</dt><dd>${c.real}</dd><dt>${X.f.like}</dt><dd>${c.like}</dd><dt>${X.f.where}</dt><dd>${c.where}</dd></dl><p class="memo">${c.memo}</p></div>`).join('')}</div>
       <p class="common">${X.common}</p>
+      <p class="common">${X.evidence}</p>
       <p class="common">${P.coNote}</p>
       <table>${P.keys.map(([k, v]) => `<tr><td><kbd>${k}</kbd></td><td>${v}</td></tr>`).join('')}</table>
       <dl class="gl">${X.gauges.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl></div>`;
@@ -181,28 +182,44 @@ export function startProctor({ renderer, ui, onEnd }) {
   }
 
   // 신호(진짜)·닮은꼴 시작. 몸짓은 같고, 발광·소리는 진짜 신호에만 붙는다
-  function start(e, name, real) {
-    const dur = real ? TUNE.signalDur[e.device] : TUNE.lookalikeDur;
+  function start(e, name, real, kind) {
+    const dur = real ? TUNE.signalDur[kind] : TUNE.lookalikeDur;
     if (name) e.person.setGesture(name, t, dur);
-    e.sig = { name, until: t + dur, real, sighted: false, neutral: false, ph: rand() * 6 };
-    if (real) coLook(e);
+    e.sig = { name, kind, until: t + dur, real, sighted: false, neutral: false, ph: rand() * 6 };
+    if (real) coLook(e, kind);
   }
   // 부감독관 시야: 플레이어와 같은 방위각 공식, 관찰자만 다르다. 가리킬 뿐 목격·현행범 기록은 건드리지 않는다
-  function coLook(e) {
+  function coLook(e, kind) {
     const c = co.group.position, dx = c.x - e.pos.x, dz = c.z - e.pos.z;
-    if (!coSpots(e.device, Math.atan2(dx, -dz) * 180 / Math.PI, Math.hypot(dx, dz), rand())) return;
+    if (!coSpots(kind, Math.atan2(dx, -dz) * 180 / Math.PI, Math.hypot(dx, dz), rand())) return;
     const m = marks.find((k) => k.e === e);
     if (m) { m.until = t + TUNE.co.markDur; return; }
     const el = document.createElement('div'); el.className = 'comark'; el.textContent = '[!]';
     $('p-marks').append(el); marks.push({ e, el, until: t + TUNE.co.markDur });
     journal(null, P.coLog(e.id), 'co'); cap(P.cap.co(e.id));
   }
+  const cycleGap = (e) => {
+    const [lo, hi] = TUNE.signalGap[e.device];
+    return (lo + rand() * (hi - lo)) / (cheaterMul(heat, calmTime).tell * (e.done ? TUNE.doneTellMul : 1));
+  };
   function schedule(e) {
     const cheating = e.type === 'cheater' && !e.deviceDead;
+    // 세트 범인: 카메라 신호 → setGap 초 뒤 이어폰 신호(한 사이클). 안경은 한 신호가 한 사이클
+    if (cheating && e.followup) {
+      e.followup = false;
+      start(e, REAL_GESTURE.earbud(rand), true, 'earbud');
+      e.next = t + TUNE.signalDur.earbud + cycleGap(e);
+      return;
+    }
     if (cheating && rand() > 0.25) {
-      const [lo, hi] = TUNE.signalGap[e.device];
-      start(e, REAL_GESTURE[e.device](rand), true);
-      e.next = t + TUNE.signalDur[e.device] + (lo + rand() * (hi - lo)) / (cheaterMul(heat, calmTime).tell * (e.done ? TUNE.doneTellMul : 1));
+      if (e.device === 'set') {
+        const [g0, g1] = TUNE.setGap;
+        start(e, null, true, 'camai'); e.followup = true;
+        e.next = t + TUNE.signalDur.camai + g0 + rand() * (g1 - g0);
+      } else {
+        start(e, REAL_GESTURE.glasses(rand), true, 'glasses');
+        e.next = t + TUNE.signalDur.glasses + cycleGap(e);
+      }
       return;
     }
     let names = ['pen', 'stretch', 'look'], lo = 3, hi = 8, div = 1; // 신호 사이의 무해 행동
@@ -221,21 +238,21 @@ export function startProctor({ renderer, ui, onEnd }) {
     let whisper = 0; whisperE = null;
     for (const e of ex) {
       if (e.removed) continue;
-      const kind = KIND[e.device], sg = e.sig;
+      const sg = e.sig, kind = sg && GLOW[sg.kind];
       if (sg && t >= sg.until) { e.sig = null; if (sg.real) e.person.setGlow(kind, 0); continue; }
       if (!sg) continue;
       const dx = camera.position.x - e.pos.x, dz = camera.position.z - e.pos.z, d = camera.position.distanceTo(e.pos);
-      const vis = sg.real ? signalVisibility(e.device, Math.atan2(dx, -dz) * 180 / Math.PI) : 0;
+      const vis = sg.real ? signalVisibility(sg.kind, Math.atan2(dx, -dz) * 180 / Math.PI) : 0;
       if (sg.real) {
         const att = d > TUNE.glowDist ? 0 : 1 - d / TUNE.glowDist * 0.5;
-        const blink = e.device === 'glasses' ? 1 : 0.6 + 0.4 * (0.5 + 0.5 * Math.sin((t + sg.ph) * 12));
-        e.person.setGlow(kind, vis * att * blink * (e.device === 'glasses' ? TUNE.lensGlowMax : 1));
-        if (e.device === 'earbud' && d <= 2 && 1 - d / 2 > whisper) { whisper = 1 - d / 2; whisperE = e; }
+        const blink = sg.kind === 'glasses' ? 1 : 0.6 + 0.4 * (0.5 + 0.5 * Math.sin((t + sg.ph) * 12));
+        e.person.setGlow(kind, vis * att * blink * (sg.kind === 'glasses' ? TUNE.lensGlowMax : 1));
+        if (sg.kind === 'earbud' && d <= 2 && 1 - d / 2 > whisper) { whisper = 1 - d / 2; whisperE = e; }
       }
       if (aimNow !== e || d > TUNE.sightDist) continue;
       if (sg.real && vis >= 0.35 && !sg.sighted) {
         sg.sighted = true; e.seen++; e.lastSight = t;
-        journal(e.id, P.signs.sight[e.device], true);
+        journal(e.id, P.signs.sight[sg.kind], true);
         if (!seenDev.has(e.device)) { seenDev.add(e.device); cap(P.cap.codex(P.codex.cards[e.device].name)); }
       } else if (!sg.neutral && !sg.sighted && P.signs.like[sg.name]) {
         sg.neutral = true; journal(e.id, P.signs.like[sg.name], false);
@@ -248,7 +265,7 @@ export function startProctor({ renderer, ui, onEnd }) {
     e.removed = true;
     e.person.leave(exitPath(e.i));
     e.person.setHighlight(false);
-    if (e.device) e.person.setGlow(KIND[e.device], 0);
+    if (e.sig?.real) e.person.setGlow(GLOW[e.sig.kind], 0);
     e.sig = null;
   }
 
@@ -263,13 +280,15 @@ export function startProctor({ renderer, ui, onEnd }) {
     return n;
   }
 
+  // 증거 3단계: 기기 발견·EMP 반응 = hard, 목격만 = soft
+  const evidenceOf = (e) => (e.found || e.empFlag ? 'hard' : e.seen >= 1 ? 'soft' : 'none');
   function arrest(e) {
     const n = stirNeighbors(e);
     if (e.type === 'cheater') {
       state.caught.push(e.id);
       emp = Math.min(100, emp + 25);
-      const ev = e.found || e.empFlag;
-      cap(P.cap.caughtRight(e.id, addHeat(TUNE.heatArrest), n, ev), ev ? '' : P.stamp.noEvidence);
+      const ev = evidenceOf(e);
+      cap(P.cap.caughtRight(e.id, addHeat(TUNE.heatArrest), n, ev), ev === 'none' ? P.stamp.noEvidence : '');
     } else {
       state.wrongCaught.push({ id: e.id, type: e.type });
       const h = addHeat(TUNE.heatArrest);
@@ -308,9 +327,10 @@ export function startProctor({ renderer, ui, onEnd }) {
       if (Math.hypot(e.pos.x - camera.position.x, e.pos.z - camera.position.z) > TUNE.empRadius) continue;
       n++;
       if (e.type === 'cheater' && !e.deviceDead) {
-        const kind = KIND[e.device];
-        e.deviceDead = true; e.sig = null; e.person.setGlow(kind, 0); e.person.flashGlow(kind);
-        e.person.setGesture('emp_' + kind, t, 3); e.person.setFace('panic', 3);
+        const set = e.device === 'set';
+        e.deviceDead = true; e.sig = null; e.followup = false;
+        for (const k of set ? ['button', 'ear'] : ['lens']) { e.person.setGlow(k, 0); e.person.flashGlow(k); }
+        e.person.setGesture(set ? 'emp_ear' : 'emp_lens', t, 3); e.person.setFace('panic', 3);
         e.stress = Math.min(100, e.stress + TUNE.stressEmpCheater);
         if (target === e) { e.empFlag = true; e.seen++; journal(e.id, P.signs.emp, true); }
       } else {
@@ -337,12 +357,21 @@ export function startProctor({ renderer, ui, onEnd }) {
     controls.unlock();
     // 증거 없이 잡은 범인은 시험 후 석방될 수 있다
     const { released } = releaseNoEvidence(
-      ex.filter((e) => state.caught.includes(e.id)).map((e) => ({ id: e.id, evidence: e.found || e.empFlag })), rand);
+      ex.filter((e) => state.caught.includes(e.id)).map((e) => ({ id: e.id, evidence: evidenceOf(e) })), rand);
     state.released = released;
     state.caught = state.caught.filter((id) => !released.includes(id));
     state.missed = ex.filter((e) => e.type === 'cheater' && !state.caught.includes(e.id)).map((e) => ({ id: e.id, device: e.device, progress: Math.round(e.progress) }));
     state.parentRisk = risk; state.riskRoll = rand();
-    onEnd({ ending: evaluateEnding(state), state, risk, meltdowns, emptyInspects });
+    // 엔딩 좌석 배치도·범인 초상. 옷 색은 몸통(첫 자식) 재질에서 가져온다
+    const seats = ex.map((e) => ({
+      id: e.id, type: e.type, device: e.device,
+      status: e.type === 'cheater' ? (state.released.includes(e.id) ? 'released' : state.caught.includes(e.id) ? 'caught' : 'missed')
+        : state.wrongCaught.some((w) => w.id === e.id) ? 'wrong' : e.meltdown ? 'meltdown' : null,
+    }));
+    // 초상은 덤이다. WebGL 컨텍스트를 못 얻어도 엔딩은 떠야 한다
+    let portraits = [];
+    try { portraits = renderPortraits(ex.filter((e) => e.type === 'cheater').map((e) => ({ color: e.person.group.children[0].material.color.getHex(), device: e.device }))); } catch (err) { console.warn('portraits', err); }
+    onEnd({ ending: evaluateEnding(state), state, risk, meltdowns, emptyInspects, seats, portraits });
   }
 
   const timer = new THREE.Timer();

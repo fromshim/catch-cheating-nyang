@@ -19,7 +19,7 @@ test('수험생 배정 수가 규칙대로다', () => {
     assert.ok(g >= 5 && g <= 6);
     for (const e of list) if (e.device === 'glasses') assert.equal(e.glasses, true);
     for (const e of list) assert.equal(e.type === 'cheater', DEVICES.includes(e.device));
-    for (const e of list) if (e.device) assert.ok(['earbud', 'camai', 'glasses'].includes(e.device));
+    assert.equal(list.filter((e) => e.device === 'glasses').length, 1);
   }
   assert.deepEqual(assignExaminees(7), assignExaminees(7));
 });
@@ -30,7 +30,7 @@ test('엔딩 우선순위와 EMP 징계', () => {
     ...base,
     wrongCaught: [{ id: 3, type: 'distracted' }],
     hearingDamaged: true,
-    missed: [{ id: 5, device: 'camai' }],
+    missed: [{ id: 5, device: 'set' }],
   };
   assert.equal(evaluateEnding(all).id, 'lawsuit');
   assert.equal(evaluateEnding({ ...all, wrongCaught: [] }).id, 'medical');
@@ -93,7 +93,7 @@ test('parentRisk 가중치와 클램프', () => {
 });
 
 test('lawsuit_risk 우선순위', () => {
-  const base = { caught: [], wrongCaught: [], missed: [{ id: 5, device: 'camai' }], hearingDamaged: false, empCount: 0 };
+  const base = { caught: [], wrongCaught: [], missed: [{ id: 5, device: 'set' }], hearingDamaged: false, empCount: 0 };
   const risky = { ...base, parentRisk: 40, riskRoll: 0.39 };
   assert.equal(evaluateEnding(risky).id, 'lawsuit_risk');
   assert.equal(evaluateEnding({ ...risky, riskRoll: 0.4 }).id, 'topscorer');
@@ -108,10 +108,10 @@ test('lawsuit_risk 우선순위', () => {
 
 test('stalemate vs topscorer', () => {
   const base = { caught: [], wrongCaught: [], hearingDamaged: false, empCount: 0 };
-  const m = (...p) => p.map((progress, i) => ({ id: i + 1, device: 'camai', progress }));
+  const m = (...p) => p.map((progress, i) => ({ id: i + 1, device: 'set', progress }));
   assert.equal(evaluateEnding({ ...base, missed: m(0, 59.9) }).id, 'stalemate');
   assert.equal(evaluateEnding({ ...base, missed: m(10, 60) }).id, 'topscorer');
-  assert.equal(evaluateEnding({ ...base, missed: [{ id: 1, device: 'camai' }] }).id, 'topscorer');
+  assert.equal(evaluateEnding({ ...base, missed: [{ id: 1, device: 'set' }] }).id, 'topscorer');
   assert.equal(evaluateEnding({ ...base, missed: [] }).id, 'perfect');
 });
 
@@ -123,28 +123,34 @@ test('nervousSignProb 경계', () => {
 });
 
 test('releaseNoEvidence', () => {
-  const arr = [{ id: 1, evidence: true }, { id: 2, evidence: false }, { id: 3, evidence: false }];
-  assert.deepEqual(releaseNoEvidence(arr, () => 0), { kept: [1], released: [2, 3] });
-  assert.deepEqual(releaseNoEvidence(arr, () => TUNE.releaseNoEvidence), { kept: [1, 2, 3], released: [] });
+  const one = (evidence, r) => releaseNoEvidence([{ id: 1, evidence }], () => r);
+  assert.deepEqual(one('hard', 0), { kept: [1], released: [] });
+  assert.deepEqual(one('soft', 0.19), { kept: [], released: [1] });
+  assert.deepEqual(one('soft', 0.2), { kept: [1], released: [] });
+  assert.deepEqual(one('none', 0.49), { kept: [], released: [1] });
+  assert.deepEqual(one('none', 0.5), { kept: [1], released: [] });
+  assert.deepEqual(one(true, 0), { kept: [1], released: [] }); // boolean 하위 호환
+  assert.deepEqual(one(false, 0), { kept: [], released: [1] });
 });
 
-test('DEVICES·INSPECT_PROB 는 3종', () => {
-  assert.deepEqual(DEVICES, ['earbud', 'camai', 'glasses']);
-  assert.deepEqual(Object.keys(INSPECT_PROB), ['earbud', 'camai', 'glasses']);
+test('DEVICES·INSPECT_PROB 는 2종', () => {
+  assert.deepEqual(DEVICES, ['set', 'glasses']);
+  assert.deepEqual(Object.keys(INSPECT_PROB), ['set', 'glasses']);
+  assert.equal(TUNE.co.markDur, 3);
 });
 
 test('inspectChance 목격 보너스와 상한', () => {
-  near(inspectChance('camai', 0), 0.7);
-  near(inspectChance('camai', 4), 0.7);
-  near(inspectChance('camai', 4.01), 0.3);
-  near(inspectChance('camai', Infinity), 0.3);
-  near(inspectChance('earbud', 1), 0.8);
+  near(inspectChance('set', 0), 0.75);
+  near(inspectChance('set', 4), 0.75);
+  near(inspectChance('set', 4.01), 0.35);
+  near(inspectChance('set', Infinity), 0.35);
+  near(inspectChance('set', 1), 0.75);
   near(inspectChance('glasses', 1), 0.55);
-  assert.ok(inspectChance('earbud', 0) <= 0.95);
-  assert.equal(inspectFound('camai', 0.69, 0), true);
-  assert.equal(inspectFound('camai', 0.7, 0), false);
-  assert.equal(inspectFound('camai', 0.29), true);
-  assert.equal(inspectFound('camai', 0.3), false);
+  assert.ok(inspectChance('set', 0) <= 0.95);
+  assert.equal(inspectFound('set', 0.74, 0), true);
+  assert.equal(inspectFound('set', 0.75, 0), false);
+  assert.equal(inspectFound('set', 0.34), true);
+  assert.equal(inspectFound('set', 0.35), false);
 });
 
 test('signalVisibility 경계값', () => {
@@ -161,7 +167,7 @@ test('signalVisibility 경계값', () => {
 
 test('replaced 는 최우선', () => {
   const s = {
-    caught: [], wrongCaught: [{ id: 3, type: 'distracted' }], missed: [{ id: 5, device: 'camai' }],
+    caught: [], wrongCaught: [{ id: 3, type: 'distracted' }], missed: [{ id: 5, device: 'set' }],
     hearingDamaged: true, empCount: 2, parentRisk: 100, riskRoll: 0, replaced: true,
   };
   assert.equal(evaluateEnding(s).id, 'replaced');

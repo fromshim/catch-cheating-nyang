@@ -48,14 +48,26 @@ function menu() {
 }
 
 // memo: 경위서 안쪽 HTML, card: 현실 카드. 엔딩 종류와 무관하게 같은 틀을 쓴다.
-function endScreen({ news = '', title, stamp, body, stats, card }, again) {
+function endScreen({ news = '', title, stamp, body, stats, card, extra = '' }, again) {
   const U = C.endingUi;
   ui.innerHTML = `<div class="screen end">${news ? `<div class="news">${news}</div>` : ''}
     <div class="end-wrap"><section class="memo"><h5>${U.memo}</h5>
-      <h2>${title}<span class="stamp">${stamp}</span></h2>${body}${stats}</section>${card}</div>
+      <h2>${title}<span class="stamp">${stamp}</span></h2>${body}${stats}</section>${card}</div>${extra}
     <div class="btns"><button id="b-again">${U.again}</button><button id="b-menu">${U.menu}</button></div></div>`;
   ui.querySelector('#b-again').onclick = again;
   ui.querySelector('#b-menu').onclick = menu;
+}
+
+// 좌석 배치도(위가 칠판, 6열×4행, 번호 = 인덱스+1)와 범인 초상 카드
+function seatMap(seats, portraits) {
+  const U = C.endingUi, ST = U.seatStatus;
+  const cell = (s) => `<div class="seat ${s.type === 'cheater' ? 'cheater' : ''} ${s.status ?? ''}"><b>${s.id}</b>${
+    s.device ? `<i class="chip">${C.deviceNames[s.device]}</i>` : ''}${s.type === 'hearing' ? `<i class="chip hear">${U.hearingTag}</i>` : ''}${
+    s.status ? `<span class="mark">${ST[s.status]}</span>` : ''}</div>`;
+  const cheaters = seats.filter((s) => s.type === 'cheater');
+  return `<section class="seatmap"><h4>${U.seatTitle}</h4><div class="board">${U.board}</div>
+    <div class="seats">${seats.map(cell).join('')}</div><p class="legend">${U.seatLegend}</p>
+    <h4>${U.portraitTitle}</h4><div class="portraits">${cheaters.map((s, k) => `<figure>${portraits[k] ? `<img src="${portraits[k]}" alt="" width="220" height="220">` : ''}<figcaption>${U.portrait(s.id, C.deviceNames[s.device], ST[s.status])}</figcaption></figure>`).join('')}</div></section>`;
 }
 
 const grid = (pairs) => `<div class="grid">${pairs.map(([k, v]) => `<div><small>${k}</small><b>${v}</b></div>`).join('')}</div>`;
@@ -64,7 +76,7 @@ function playProctor() {
   mode?.stop();
   mode = startProctor({
     renderer, ui,
-    onEnd({ ending, state, risk, meltdowns, emptyInspects }) {
+    onEnd({ ending, state, risk, meltdowns, emptyInspects, seats, portraits }) {
       const U = C.endingUi, e = C.endings[ending.id];
       const list = (a, f) => (a.length ? a.map(f).join(', ') : U.none);
       mode.stop(); mode = null;
@@ -78,6 +90,7 @@ function playProctor() {
           <p>${U.probTitle}: ${Object.entries(INSPECT_PROB).map(([d, p]) => `${C.deviceNames[d]} ${Math.round(p * 100)}%`).join(' · ')} (${U.probNote})</p>
           <p>${U.missedList}: ${list(state.missed, (m) => `${m.id}번(${C.deviceNames[m.device]})`)}</p></div>`,
         card: reality(e.realityCard),
+        extra: seatMap(seats, portraits),
       }, playProctor);
     },
   });
