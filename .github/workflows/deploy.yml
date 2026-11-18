@@ -1,0 +1,27 @@
+# master 에 push 되면 Vercel CLI 로 운영 배포한다.
+# Vercel 무료 플랜은 조직 저장소의 Git 연동 배포를 막지만 CLI 배포는 된다. 그래서 연동 대신 CLI 를 쓴다.
+name: Deploy to Vercel
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+env:
+  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npx vercel@54.15.0 pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+      - run: npx vercel@54.15.0 build --prod --token=${{ secrets.VERCEL_TOKEN }}
+      - run: npx vercel@54.15.0 deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
