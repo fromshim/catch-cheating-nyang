@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { audio } from './audio.js';
 import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
 import { buildClassroom, seatExaminees, createPerson, animatePerson, seatPos, exitPath, autoResize, renderPortraits, ROOM, SEAT_RADIUS } from './scene.js';
-import { assignExaminees, evaluateEnding, inspectChance, signalVisibility, mulberry32, TUNE, stressStep, stressLevel, heatStep, calmStep, cheaterMul, innocentTellMul, parentRisk, nervousSignProb, releaseNoEvidence, coSpots } from './logic.js';
+import { allCaught, assignExaminees, evaluateEnding, inspectChance, signalVisibility, mulberry32, TUNE, stressStep, stressLevel, heatStep, calmStep, cheaterMul, innocentTellMul, parentRisk, nervousSignProb, releaseNoEvidence, coSpots } from './logic.js';
 import { C } from './content.js';
 
 const P = C.proctor;
@@ -247,7 +247,7 @@ export function startProctor({ renderer, ui, onEnd }) {
       if (sg.real) {
         const att = d > TUNE.glowDist ? 0 : 1 - d / TUNE.glowDist * 0.5;
         const blink = sg.kind === 'glasses' ? 1 : 0.6 + 0.4 * (0.5 + 0.5 * Math.sin((t + sg.ph) * 12));
-        e.person.setGlow(kind, vis * att * blink * (sg.kind === 'glasses' ? TUNE.lensGlowMax : 1));
+        e.person.setGlow(kind, vis * att * blink * (sg.kind === 'glasses' ? TUNE.lensGlowMax : sg.kind === 'camai' ? TUNE.buttonGlowMax : 1));
         if (sg.kind === 'earbud' && d <= 2 && 1 - d / 2 > whisper) { whisper = 1 - d / 2; whisperE = e; }
       }
       if (aimNow !== e || d > TUNE.sightDist) continue;
@@ -292,6 +292,7 @@ export function startProctor({ renderer, ui, onEnd }) {
     const n = stirNeighbors(e);
     if (e.type === 'cheater') {
       state.caught.push(e.id);
+      if (allCaught(ex, state.caught)) allClear();
       emp = Math.min(100, emp + 25);
       const ev = evidenceOf(e);
       cap(P.cap.caughtRight(e.id, addHeat(TUNE.heatArrest), n, ev), ev === 'none' ? P.stamp.noEvidence : '');
@@ -340,7 +341,9 @@ export function startProctor({ renderer, ui, onEnd }) {
       if (e.type === 'cheater' && !e.deviceDead) {
         const set = e.device === 'set';
         e.deviceDead = true; e.sig = null; e.followup = false;
-        for (const k of set ? ['button', 'ear'] : ['lens']) { e.person.setGlow(k, 0); e.person.flashGlow(k); }
+        const kinds = set ? ['button', 'ear'] : ['lens'];
+        for (const k of kinds) { e.person.setGlow(k, 0); e.person.flashGlow(k); }
+        e.person.fault(kinds, 3);
         e.person.setGesture(set ? 'emp_ear' : 'emp_lens', t, 3); e.person.setFace('panic', 3);
         e.stress = Math.min(100, e.stress + TUNE.stressEmpCheater);
         say(e, 'emp');
@@ -348,7 +351,11 @@ export function startProctor({ renderer, ui, onEnd }) {
       } else {
         e.stress = Math.min(100, e.stress + TUNE.stressEmpInnocent);
         if (!e.meltdown) e.person.setGesture('look', t, 1.5);
-        if (e.type === 'hearing') state.hearingDamaged = true;
+        if (e.type === 'hearing') {
+          state.hearingDamaged = true;
+          e.person.setFace('panic', 3); e.person.setGesture('emp_aid', t, 3); e.person.fault(['ear'], 3);
+          say(e, 'emp');
+        }
       }
     }
     cap(P.cap.emp(state.hearingDamaged ? 'hearing' : 'none', addHeat(TUNE.heatEmp), n));
@@ -357,7 +364,10 @@ export function startProctor({ renderer, ui, onEnd }) {
   const onKey = (down) => (ev) => {
     keys[ev.code] = down;
     if (!down || !running || ended || ev.repeat) return;
-    if (ev.code === 'KeyF') { const e = reach(); if (e) arrest(e); }
+    if (ev.code === 'KeyF') {
+      const e = reach();
+      if (e) arrest(e);
+    }
     if (ev.code === 'KeyQ' && emp >= 100) fireEmp();
   };
   const kd = onKey(true), ku = onKey(false);
@@ -452,15 +462,15 @@ export function startProctor({ renderer, ui, onEnd }) {
     }
     if (bannerOff && t >= bannerOff) { bannerOff = 0; $('p-banner').hidden = true; }
 
-    // 소지품 검사: E 홀드 2초 (쿨타임 중엔 불가)
+    // 소지품 검사: E 홀드 (쿨타임 중엔 불가)
     inspectCd = Math.max(0, inspectCd - dt);
     const near = inspectCd > 0 ? null : reach();
     if (keys.KeyE && near && near.id === inspectId) {
       inspectT += dt;
-      if (inspectT >= 2) { inspect(near); inspectT = 0; keys.KeyE = false; }
+      if (inspectT >= TUNE.inspectHold) { inspect(near); inspectT = 0; keys.KeyE = false; }
     } else { inspectT = 0; inspectId = keys.KeyE && near ? near.id : null; }
     const insp = $('p-insp'); insp.hidden = !(inspectT > 0);
-    insp.querySelector('u').style.width = (inspectT / 2) * 100 + '%';
+    insp.querySelector('u').style.width = (inspectT / TUNE.inspectHold) * 100 + '%';
 
     if (flick > 0) { flick -= dt; flicker(false); } else flicker(true);
 
@@ -530,9 +540,15 @@ export function startProctor({ renderer, ui, onEnd }) {
     setClock(Math.max(0, timeLeft / T0));
     if (t >= 30) ui.querySelector('.keys').classList.add('dim');
     if (low && sec !== lastTick && sec > 0) { lastTick = sec; audio.tick(1 - sec / 31); }
-    audio.heartbeat(inspectT > 0 ? 0.6 + 0.4 * (inspectT / 2) : risk < 40 ? 0 : ((risk - 40) / 60) * 0.5);
+    audio.heartbeat(inspectT > 0 ? 0.6 + 0.4 * (inspectT / TUNE.inspectHold) : risk < 40 ? 0 : ((risk - 40) / 60) * 0.5);
     if (risk >= TUNE.riskGameOver) return gameOver();
     if (timeLeft <= 0) finish();
+  }
+  // 범인 전원 검거: 도장 소리와 캡션 뒤 바로 엔딩(석방 판정은 finish 에서)
+  function allClear() {
+    ended = true; audio.stopAll(); audio.stamp();
+    capsEl.innerHTML = ''; cap(P.allCaught);
+    overTimer = setTimeout(finish, 1500);
   }
   // 학부모 항의 폭주로 즉시 종료: 붉은 화면 + 캡션 + 도장 소리, 잠시 뒤 엔딩
   function gameOver() {

@@ -300,8 +300,23 @@ export function createPerson(rand, { color, proctor = false } = {}) {
     const sp = box(0.04, 0.04, 0.04, sm); sp.position.set((rand() - 0.5) * 0.7, 1.1 + rand() * 0.6, (rand() - 0.5) * 0.4 - 0.2); sparks.add(sp);
   }
 
+  // EMP 고장 표시: 기기 발광 위치마다 노란 가산 점 + 지지직 불꽃 3개. fault() 동안만 보인다
+  const faultHaloMat = additive(0xffd23a, haloTex()); faultHaloMat.opacity = 1;
+  const faultSparkMat = new THREE.MeshBasicMaterial({ color: 0xffd23a, fog: false });
+  const faultMark = (parent, x, y, z, ry = 0) => {
+    const m = new THREE.Group(); m.position.set(x, y, z); m.visible = false; m.rotation.y = ry; parent.add(m);
+    const h = new THREE.Mesh(new THREE.PlaneGeometry(0.14, 0.14), faultHaloMat); m.add(h);
+    const sp = [0, 1, 2].map(() => { const s = box(0.012, 0.012, 0.012, faultSparkMat); m.add(s); return s; });
+    return { m, sp };
+  };
+  const faultMarks = {
+    button: [faultMark(g, 0, 1.3, -0.155)],
+    ear: [faultMark(head, 0.2, 0, 0, Math.PI / 2)],
+    lens: [-0.07, 0.07].map((lx) => faultMark(glasses, lx, 0.012, -0.205)),
+  };
+
   const p = {
-    group: g, head, R, L, RL, LL, mouth, brows, face: null, glasses, sparks, glows,
+    group: g, head, faultMarks, faultEnd: -Infinity, faultKinds: [], R, L, RL, LL, mouth, brows, face: null, glasses, sparks, glows,
     pose: { ...REST },
     stress: 0,
     gesture: null, // {name, start, end}
@@ -318,6 +333,8 @@ export function createPerson(rand, { color, proctor = false } = {}) {
     },
     // name: 'neutral' | 'panic'. panic 은 dur 초 뒤 animatePerson 이 neutral 로 되돌린다(now 기준 end)
     setFace(name, dur = 0) { p.face = name === 'panic' ? { end: p.now + dur } : null; },
+    // kinds: ['button','ear','lens'] 중 일부. dur 초 동안 해당 기기 위치에 노란 고장 표시
+    fault(kinds, dur) { p.faultKinds = kinds; p.faultEnd = p.now + dur; },
     setGlow(kind, v) { glows[kind].v = v; },
     flashGlow(kind) { glows[kind].flash = 0.25; },
     setHighlight(on) { cloth.emissive.setHex(on ? 0x333333 : 0); },
@@ -369,9 +386,10 @@ export function animatePerson(p, now, dt) {
         case 'tilt': Object.assign(tgt, { rs: 1.7, re: 2.25, rz: -0.9, hy: 0, hz: -0.4 }); break; // 손 (0.25,1.67,-0.02) 귀 덮기, 오른쪽 어깨로 기움
         case 'cock': Object.assign(tgt, { hy: 0.15, hz: -0.4 }); break; // 손 없이 고개만 오른쪽으로 갸웃
         case 'scratch': Object.assign(tgt, { rs: 1.9, re: 2.05 + Math.sin(k * 18) * 0.12, rz: -0.5 }); break; // 손 (0.25,1.72,-0.02) 귀 근처 왕복
-        case 'emp_ear': Object.assign(tgt, { rs: 1.6, re: 2.3, rz: -1.2, hz: -0.2, by: SEAT_Y + Math.abs(Math.sin(k * 30)) * 0.03 }); jitter = 0.05; sparks = true; ps_f = 30; break;
-        case 'emp_lens': Object.assign(tgt, { rs: 1.45, re: 1.55, rz: -0.75, ls: 1.55, le: 1.45, lz: 0.55, hx: 0.1 }); jitter = 0.03; sparks = true; ps_f = 30; break; // 양손 (±0.13,1.70,-0.25)
-        case 'emp_button': Object.assign(tgt, { rs: 0, re: 1.25, rz: -0.7, ls: 0, le: 1.25, lz: 0.55, hx: -0.6 }); jitter = 0.03; sparks = true; ps_f = 30; break; // 양손 (±0.1,1.12,-0.29)
+        case 'emp_ear': Object.assign(tgt, { rs: 1.6, re: 2.3, rz: -1.2, hz: -0.2, by: SEAT_Y + Math.abs(Math.sin(k * 30)) * 0.03 }); jitter = 0.05; ps_f = 30; break;
+        case 'emp_aid': Object.assign(tgt, { rs: 1.9, re: 2.05, rz: -0.5, hy: 0.1, hz: -0.25 }); break; // 손 귀 근처, 고개 갸웃(움찔 없음)
+        case 'emp_lens': Object.assign(tgt, { rs: 1.45, re: 1.55, rz: -0.75, ls: 1.55, le: 1.45, lz: 0.55, hx: 0.1 }); jitter = 0.03; ps_f = 30; break; // 양손 (±0.13,1.70,-0.25)
+        case 'emp_button': Object.assign(tgt, { rs: 0, re: 1.25, rz: -0.7, ls: 0, le: 1.25, lz: 0.55, hx: -0.6 }); jitter = 0.03; ps_f = 30; break; // 양손 (±0.1,1.12,-0.29)
         case 'look': tgt.hy = Math.sin(k * 4) * 0.9; tgt.hx = 0; break;
         case 'stretch': Object.assign(tgt, { rs: 3.0, ls: 3.0, re: 0.1, le: 0.1, hx: 0.25 }); break;
         case 'slump': { // 책상에 엎드려 흐느낌
@@ -407,6 +425,11 @@ export function animatePerson(p, now, dt) {
     for (const m of o.objs) { m.visible = vis; m.scale.setScalar(sc); }
   }
   p.sparks.visible = sparks;
+  const fon = now < p.faultEnd;
+  for (const k in p.faultMarks) for (const { m, sp } of p.faultMarks[k]) {
+    m.visible = fon && p.faultKinds.includes(k) && (k !== 'lens' || p.glasses.visible);
+    if (m.visible) for (const s of sp) s.position.set((Math.random() - 0.5) * 0.16, (Math.random() - 0.5) * 0.16, 0.01 + Math.random() * 0.03), s.visible = Math.random() > 0.35;
+  }
   const jit = Math.max(jitter, p.stress >= 60 ? 0.02 : 0); // 긴장 60 이상이면 ±0.01 떨림
   p.head.position.x = jit ? (Math.random() - 0.5) * jit : 0;
 }

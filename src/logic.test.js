@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   assignExaminees, evaluateEnding, DEVICES,
   stressStep, stressLevel, heatStep, calmStep, cheaterMul, innocentTellMul, parentRisk,
-  nervousSignProb, releaseNoEvidence, coSpots, TUNE, INSPECT_PROB, inspectChance, inspectFound, signalVisibility,
+  nervousSignProb, releaseNoEvidence, allCaught, coSpots, TUNE, INSPECT_PROB, inspectChance, inspectFound, signalVisibility,
 } from './logic.js';
 
 test('수험생 배정 수가 규칙대로다', () => {
@@ -22,6 +22,36 @@ test('수험생 배정 수가 규칙대로다', () => {
     assert.equal(list.filter((e) => e.device === 'glasses').length, 1);
   }
   assert.deepEqual(assignExaminees(7), assignExaminees(7));
+});
+
+test('보청기 학생은 0 또는 1명, 1명 비율은 약 20%', () => {
+  let ones = 0;
+  const N = 1000;
+  for (let seed = 1; seed <= N; seed++) {
+    const h = assignExaminees(seed).filter((e) => e.type === 'hearing').length;
+    assert.ok(h === 0 || h === 1);
+    ones += h;
+  }
+  const ratio = ones / N;
+  assert.ok(ratio >= 0.12 && ratio <= 0.28, `ratio ${ratio}`);
+});
+
+test('allCaught 경계', () => {
+  const ex = [
+    { id: 1, type: 'cheater' }, { id: 2, type: 'cheater' },
+    { id: 3, type: 'normal' }, { id: 4, type: 'distracted' },
+  ];
+  assert.equal(allCaught([{ id: 3, type: 'normal' }], [3]), false); // 범인 0명
+  assert.equal(allCaught(ex, []), false);
+  assert.equal(allCaught(ex, [1]), false);
+  assert.equal(allCaught(ex, [1, 3]), false);
+  assert.equal(allCaught(ex, [1, 2]), true);
+  assert.equal(allCaught(ex, [1, 2, 3, 4]), true); // 무고 섞여도 범인 전원이면 true
+});
+
+test('TUNE 신규 값', () => {
+  assert.equal(TUNE.inspectHold, 1.2);
+  assert.equal(TUNE.buttonGlowMax, 0.55);
 });
 
 test('엔딩 우선순위와 EMP 징계', () => {

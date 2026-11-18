@@ -48,14 +48,14 @@ export const coSpots = (kind, angleDeg, dist, roll) =>
 /**
  * 수험생 배정. 반환: 길이 n 배열, 인덱스 i = 책상 i, id = i + 1.
  * type: 'cheater' | 'distracted' | 'hearing' | 'normal'
- * 규칙: 부정행위자 3~4(그중 정확히 1명 glasses, 나머지 set), 산만한 무고 2~3, 보청기 0~1.
+ * 규칙: 부정행위자 3~4(그중 정확히 1명 glasses, 나머지 set), 산만한 무고 2~3, 보청기 20% 확률로 1명(아니면 0).
  * glasses: 안경 착용 여부. device==='glasses' 범인은 true, 그 외 비범인 5~6명도 true(정체 누출 방지).
  */
 export function assignExaminees(seed, n = 24) {
   const r = mulberry32(seed);
   const nCheat = 3 + Math.floor(r() * 2);
   const nDistract = 2 + Math.floor(r() * 2);
-  const nHearing = Math.floor(r() * 2);
+  const nHearing = r() < 0.2 ? 1 : 0; // 보청기 학생은 20% 확률로 1명
   const order = Array.from({ length: n }, (_, i) => i);
   for (let i = n - 1; i > 0; i--) {
     const j = Math.floor(r() * (i + 1));
@@ -116,6 +116,7 @@ export function evaluateEnding(state) {
 
 export const TUNE = {
   inspectCooldown: 5, // 검사(E) 쿨타임 초
+  inspectHold: 1.2, // E 홀드 검사 시간 초
   // 개인 긴장(stress) 0~100
   stressEmptyInspect: 35,
   stressNeighbor: 10,
@@ -157,7 +158,14 @@ export const TUNE = {
   innocentGap: { normal: [14, 26], distracted: [6, 12], hearing: [16, 28] },
   innocentLookalikeShare: { normal: 0.3, distracted: 0.6, hearing: 0.5 },
   lensGlowMax: 0.45, // AI 안경 빛샘 발광 세기 상한(proctor 가 세기에 곱함)
+  buttonGlowMax: 0.55, // 카메라 단추 발광 세기 상한
 };
+
+// 범인이 1명 이상이고 전원이 검거됐는가(즉시 클리어 판정)
+export function allCaught(examinees, caughtIds) {
+  const cheaters = examinees.filter((e) => e.type === 'cheater');
+  return cheaters.length > 0 && cheaters.every((e) => caughtIds.includes(e.id));
+}
 
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 

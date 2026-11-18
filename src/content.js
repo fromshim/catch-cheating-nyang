@@ -5,7 +5,7 @@ export const EXAM = '대학수박능력시험';
 export const EXAM_SHORT = '수능';
 export const ORG = '한국교육과일평가원';
 export const MINISTRY = '교육부';
-const SHORT_ORG = '과일평가원';
+const SHORT_ORG = '평가원';
 const SOFT = '목격 기록 있음, 판정은 시험 후';
 
 export const C = {
@@ -96,7 +96,8 @@ export const C = {
     log: (id, text) => `${id}번: ${text}`,
     coLog: (id) => `부감독관: ${id}번 쪽이 수상합니다`,
     whisperChip: '(웅얼웅얼… 소리가 새어 나온다)',
-    gameOverCap: '학부모 항의 폭주 → 과일평가원, 감독관 교체',
+    allCaught: '전원 검거',
+    gameOverCap: '학부모 항의 폭주 → 평가원, 감독관 교체',
     // 행동 → 결과 한 줄 캡션
     cap: {
       empty: (id, risk, heat, n) => `${id}번 빈손 검사 → 학부모 리스크 +${risk} · 경계도 +${heat}${n ? ` · 주변 ${n}명 긴장` : ''}`,
@@ -131,8 +132,8 @@ export const C = {
       ],
     },
     directive: {
-      start: `[${SHORT_ORG} 긴급 지침] 안경 착용 수험생 전원 소지품 검사 실시`,
-      withdraw: `[${SHORT_ORG}] "해당 지침은 검토한 바 없음"`,
+      start: `[${ORG} 긴급 지침] 안경 착용 수험생 전원 소지품 검사 실시`,
+      withdraw: `[${ORG}] "해당 지침은 검토한 바 없음"`,
     },
     ticker: [
       `${EXAM_SHORT} 전국 수석, 영상 올려 "AI로 풀었다" 자수... 경찰 수사 착수`,
@@ -154,8 +155,8 @@ export const C = {
       title: '감독관 교체',
       realityCard: null, // 아래에서 lawsuit_risk 카드를 재사용
       body: [
-        '항의 전화가 시험 중에 과일평가원 교환대로 몰렸다. {wrongLine} {meltdownLine}',
-        '과일평가원은 "공정한 시험 관리를 위한 조치"라며 시험 도중 감독관을 교체했다.',
+        '항의 전화가 시험 중에 평가원 교환대로 몰렸다. {wrongLine} {meltdownLine}',
+        '평가원은 "공정한 시험 관리를 위한 조치"라며 시험 도중 감독관을 교체했다.',
       ],
     },
     lawsuit: {
@@ -166,8 +167,8 @@ export const C = {
         source: '뉴시스 2023-11-24, 뉴시스 2024-11-11',
       },
       body: [
-        '적발한 수험생은 부정행위를 하지 않았다. 긴장해서 두리번거렸을 뿐이다. 퇴실한 수험생의 부모는 다음 날 과일평가원 앞에서 기자회견을 열었다.',
-        '부모는 감독관이 아이를 범인 취급했다고 주장했다. 영상은 하루 만에 조회수 백만을 넘었고, 과일평가원은 "감독관 개인의 판단"이라고 밝혔다. 감독관은 경위서를 제출했다.',
+        '적발한 수험생은 부정행위를 하지 않았다. 긴장해서 두리번거렸을 뿐이다. 퇴실한 수험생의 부모는 다음 날 평가원 앞에서 기자회견을 열었다.',
+        '부모는 감독관이 아이를 범인 취급했다고 주장했다. 영상은 하루 만에 조회수 백만을 넘었고, 평가원은 "감독관 개인의 판단"이라고 밝혔다. 감독관은 경위서를 제출했다.',
       ],
     },
     lawsuit_risk: {
@@ -179,7 +180,7 @@ export const C = {
       },
       body: [
         '감독관은 빈 가방을 여러 번 열었고, 한 수험생 옆에서 오래 지켜봤다. 그 수험생은 시험을 망쳤고, 부모는 며칠 뒤 감독관이 아이를 몰아붙였다며 고소했다.',
-        '과일평가원은 "감독관 개인의 판단"이라고 답했다.',
+        '평가원은 "감독관 개인의 판단"이라고 답했다.',
       ],
     },
     medical: {
@@ -191,7 +192,7 @@ export const C = {
       },
       body: [
         'EMP 펄스가 퍼지자 고사실 한쪽에서 짧은 소리가 났다. 한 수험생의 보청기가 손상됐고, 그 수험생은 남은 시간 동안 안내 방송과 종료령을 듣지 못했다.',
-        '과일평가원은 "해당 장비의 사용은 매뉴얼에 없었다"고 밝혔다.',
+        '평가원은 "해당 장비의 사용은 매뉴얼에 없었다"고 밝혔다.',
       ],
     },
     stalemate: {
@@ -236,7 +237,7 @@ export const C = {
       },
       body: [
         '부정행위자는 모두 적발했지만, 부정행위를 하지 않은 수험생 한 명도 함께 퇴실했다.',
-        '그 수험생은 복도에서 한참 서 있었고, 그날 밤 과일평가원 민원 게시판에 글이 올라왔다.',
+        '그 수험생은 복도에서 한참 서 있었고, 그날 밤 평가원 민원 게시판에 글이 올라왔다.',
       ],
     },
   },
@@ -261,15 +262,18 @@ export const C = {
     meltdownLine: (n) => (n ? `멘붕한 수험생은 ${n}명이었다.` : '멘붕한 수험생은 없었다.'),
     probTitle: '소지품 검사 발견 확률',
     probNote: '작을수록 빠져나간다',
-    reality: '현실 카드',
-    seatTitle: '좌석 배치도',
+    reality: '현실 사례',
+    seatTitle: '좌석 배치도 (감독관 시점)',
     board: '칠판',
     seatStatus: { caught: '검거', released: '석방', missed: '놓침', wrong: '오적발', meltdown: '멘붕' },
     hearingTag: '보청기',
-    seatLegend: '범인 칸은 기기와 결과, 붉은 X는 오적발, 멘붕과 보청기 학생도 표시했다.',
+    seatLegend: '교실 앞에서 학생들을 마주 본 방향이다. 범인 칸은 기기와 결과, 붉은 X는 오적발, 멘붕과 보청기 학생도 표시했다.',
     portraitTitle: '범인 초상',
     portrait: (id, dev, st) => `${id}번 · ${dev} · ${st}`,
     memo: '경 위 서',
+    newsTag: '속보',
+    devShort: { set: '세트', glasses: '안경' },
+    headline: { clear: '검거 완료!', failed: (n) => `${n}명 검거 실패!`, replaced: '감독관 교체!', examinee: { caught: '적발!', pass: '합격!', fail: '불합격!' } },
     again: '다시하기',
     menu: '메뉴로',
   },
@@ -340,7 +344,7 @@ export const C = {
     },
     stats: { progress: '최종 진척', suspicion: '최종 의심', device: '사용 기기' },
   },
-  common: { realityTitle: '현실 카드' },
+  common: { realityTitle: '현실 사례' },
 };
 
 // 교착 엔딩은 완벽한 감독 엔딩의 현실 카드를 그대로 쓴다
