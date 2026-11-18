@@ -9,9 +9,9 @@
 .ticket { position: relative; width: min(640px, 100%); background: var(--paper); color: var(--ink); border: 2px solid var(--ink); outline: 1px solid var(--ink); outline-offset: -8px; padding: 28px 36px 24px; box-shadow: 0 10px 40px #0008; }
 .ticket h5 { margin: 0; font: 700 18px var(--serif); letter-spacing: 0.6em; padding-left: 0.6em; text-align: center; border-bottom: 1px solid var(--ink); padding-bottom: 10px; }
 .ticket .org { margin: 14px 0 0; font-size: 14px; text-align: left; }
-.ticket h1 { font: 800 72px/1.1 var(--serif); letter-spacing: 0.3em; padding-left: 0.3em; margin: 4px 0 0; }
+.ticket h1 { font: 800 60px/1.1 var(--serif); letter-spacing: 0.06em; padding-left: 0.06em; margin: 4px 0 0; }
 .ticket .sub { color: var(--ink); opacity: 0.75; margin: 4px 0 22px; font-size: 14px; }
-.seal { position: absolute; top: 56px; right: 30px; width: 74px; height: 74px; border: 3px solid var(--seal); border-radius: 50%; color: var(--seal); display: flex; align-items: center; justify-content: center; text-align: center; font: 700 14px/1.2 var(--serif); transform: rotate(-12deg); opacity: 0.85; padding: 6px; }
+.seal { position: absolute; top: 14px; right: 26px; width: 74px; height: 74px; border: 3px solid var(--seal); border-radius: 50%; color: var(--seal); display: flex; align-items: center; justify-content: center; text-align: center; font: 700 12px/1.2 var(--serif); transform: rotate(-12deg); opacity: 0.85; padding: 6px; }
 .ticket .modes { gap: 14px; }
 .ticket .modes button { flex: 1; width: auto; background: transparent; color: var(--ink); border: 1px solid var(--ink); border-radius: 0; padding: 14px; text-align: left; gap: 4px; }
 .ticket .modes button:hover { background: var(--jade); }
@@ -44,9 +44,9 @@
 .end .btns button:hover { background: var(--jade); }
 @media (max-width: 760px) {
   .end-wrap { grid-template-columns: 1fr; }
-  .ticket h1 { font-size: 52px; }
+  .ticket h1 { font-size: 40px; }
   .ticket .modes { flex-direction: column; }
-  .seal { top: 52px; right: 16px; width: 60px; height: 60px; font-size: 12px; }
+  .seal { top: 10px; right: 12px; width: 60px; height: 60px; font-size: 12px; }
 }
 
 /* 엔딩: 좌석 배치도·범인 초상 */

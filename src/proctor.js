@@ -28,6 +28,7 @@ export function startProctor({ renderer, ui, onEnd }) {
   co.group.position.set(-4, 0, coZ);
   co.walk = { pts: [[-4, coZ], [4, coZ]], i: 1, loop: true };
   scene.add(co.group);
+  const says = []; // 학생 머리 위 말풍선 {e, el, life}
   const marks = []; // 부감독관이 가리킨 학생 {e, el, until}
   const ex = assignExaminees(seed).map((e, i) => {
     const person = people[i];
@@ -57,7 +58,7 @@ export function startProctor({ renderer, ui, onEnd }) {
   ui.innerHTML = `
     <div class="hud proctor">
       <div class="vignette" id="p-vig"></div><div class="emp-flash" id="p-flash"></div>
-      <div class="hud-center"><b id="p-time">0:00</b><span id="p-counts"></span></div>
+      <div class="hud-center"><b id="p-time">${Math.floor(timeLeft / 60)}:${String(Math.floor(timeLeft % 60)).padStart(2, '0')}</b><span id="p-counts"></span></div>
       <div id="p-banner" class="banner" hidden></div>
       <div class="gauges">
         <div class="gauge"><label id="p-emp-l">${P.emp}</label><i><u id="p-emp"></u></i></div>
@@ -104,7 +105,7 @@ export function startProctor({ renderer, ui, onEnd }) {
       <button class="resume">${X.resume}</button>
       <h3>${X.title}</h3>
       <div class="cards">${Object.entries(X.cards).map(([d, c]) => `<div class="card">${seenDev.has(d) ? `<span class="stamp">${X.stamp}</span>` : ''}<h4>${c.name}</h4>
-        <dl><dt>${X.f.real}</dt><dd>${c.real}</dd><dt>${X.f.like}</dt><dd>${c.like}</dd><dt>${X.f.where}</dt><dd>${c.where}</dd></dl><p class="memo">${c.memo}</p></div>`).join('')}</div>
+        <dl><dt>${X.f.real}</dt><dd>${c.real}</dd><dt>${X.f.like}</dt><dd>${c.like}</dd><dt>${X.f.where}</dt><dd>${c.where}</dd></dl>${c.memo ? `<p class="memo">${c.memo}</p>` : ''}</div>`).join('')}</div>
       <p class="common">${X.common}</p>
       <p class="common">${X.evidence}</p>
       <p class="common">${P.coNote}</p>
@@ -282,6 +283,11 @@ export function startProctor({ renderer, ui, onEnd }) {
 
   // 증거 3단계: 기기 발견·EMP 반응 = hard, 목격만 = soft
   const evidenceOf = (e) => (e.found || e.empFlag ? 'hard' : e.seen >= 1 ? 'soft' : 'none');
+  function say(e, key) {
+    const el = document.createElement('div');
+    el.className = 'say'; el.textContent = pick(rand, P.say[key]);
+    $('p-marks').append(el); says.push({ e, el, life: 1.8 });
+  }
   function arrest(e) {
     const n = stirNeighbors(e);
     if (e.type === 'cheater') {
@@ -289,12 +295,16 @@ export function startProctor({ renderer, ui, onEnd }) {
       emp = Math.min(100, emp + 25);
       const ev = evidenceOf(e);
       cap(P.cap.caughtRight(e.id, addHeat(TUNE.heatArrest), n, ev), ev === 'none' ? P.stamp.noEvidence : '');
+      say(e, 'caught');
     } else {
       state.wrongCaught.push({ id: e.id, type: e.type });
       const h = addHeat(TUNE.heatArrest);
       cap(P.cap.caughtWrong(e.id, syncRisk(), h, n));
+      say(e, 'wrong');
     }
     remove(e);
+    // 퇴실한 학생은 긴장 루프에서 빠지니 멘붕 판정 없이 얼굴만 빨개진다
+    if (e.type !== 'cheater') e.person.setStress(95);
     audio.stamp();
   }
 
@@ -312,6 +322,7 @@ export function startProctor({ renderer, ui, onEnd }) {
       e.inspected = e.found ? 'found' : 'empty';
       emptyInspects++; e.stress = Math.min(100, e.stress + TUNE.stressEmptyInspect);
       cap(P.cap.empty(e.id, syncRisk(), h, n));
+      say(e, 'empty');
     }
   }
 
@@ -332,6 +343,7 @@ export function startProctor({ renderer, ui, onEnd }) {
         for (const k of set ? ['button', 'ear'] : ['lens']) { e.person.setGlow(k, 0); e.person.flashGlow(k); }
         e.person.setGesture(set ? 'emp_ear' : 'emp_lens', t, 3); e.person.setFace('panic', 3);
         e.stress = Math.min(100, e.stress + TUNE.stressEmpCheater);
+        say(e, 'emp');
         if (target === e) { e.empFlag = true; e.seen++; journal(e.id, P.signs.emp, true); }
       } else {
         e.stress = Math.min(100, e.stress + TUNE.stressEmpInnocent);
@@ -418,6 +430,7 @@ export function startProctor({ renderer, ui, onEnd }) {
           e.meltdown = true; meltdowns++;
           e.person.setGesture('slump', t, 9999);
           cap(P.cap.meltdown(e.id, syncRisk()));
+          say(e, 'meltdown');
         }
       }
       e.person.setStress(e.stress);
@@ -483,6 +496,12 @@ export function startProctor({ renderer, ui, onEnd }) {
     for (let k = marks.length - 1; k >= 0; k--) {
       const m = marks[k];
       if (t >= m.until || m.e.removed) { m.el.remove(); marks.splice(k, 1); } else proj(m.el, m.e.pos, 0.5);
+    }
+    for (let k = says.length - 1; k >= 0; k--) {
+      const m = says[k];
+      if ((m.life -= dt) <= 0) { m.el.remove(); says.splice(k, 1); continue; }
+      proj(m.el, m.e.person.group.position, 1.7); // 앉으면 group 이 내려가므로 머리 위까지 넉넉히
+      m.el.hidden = m.el.hidden || Math.abs(v.x) > 1 || Math.abs(v.y) > 1;
     }
     for (let k = caps.length - 1; k >= 0; k--) if ((caps[k].life -= dt) <= 0) caps.splice(k, 1)[0].el.remove();
     const sec = Math.max(0, Math.ceil(timeLeft)), low = timeLeft <= 30;

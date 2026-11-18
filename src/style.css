@@ -132,3 +132,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 @keyframes dangerp { 50% { transform: scale(1.06); filter: drop-shadow(0 0 6px #f33); } }
 .panel .note { display: block; margin-top: 10px; font-size: 12px; color: #b8ab8a; }
 .overlay.over { background: rgba(120, 0, 0, 0.55); }
+.say { position: absolute; transform: translate(-50%, -100%); margin-top: -8px; pointer-events: none; white-space: nowrap; background: #F4F1E6; color: #1B1F24; font-size: 16px; font-weight: 700; padding: 4px 10px; border-radius: 6px; animation: saypop 0.18s ease-out; }
+.say::after { content: ''; position: absolute; left: 50%; top: 100%; margin-left: -6px; border: 6px solid transparent; border-top-color: #F4F1E6; border-bottom: 0; }
+@keyframes saypop { from { opacity: 0; margin-top: 4px; } to { opacity: 1; margin-top: -8px; } }
+@media (prefers-reduced-motion: reduce) { .say { animation: none; } }
