@@ -8,8 +8,9 @@ import { kbd, bust, stack, dial, ring as aimRing } from './hudkit.js';
 
 const P = C.proctor;
 const GLOW = { camai: 'button', earbud: 'ear', glasses: 'lens' }; // 신호 kind → 발광 부위
-// 진짜 신호 몸짓은 발광 부위(단추·귀)를 손으로 가리지 않는다. 손 대는 동작은 닮은꼴 몫
-const REAL_GESTURE = { camai: () => null, earbud: () => 'cock', glasses: (r) => (r() < 0.5 ? 'frame' : null) };
+// 진짜 신호는 두 단계: 1단계 = 부위를 만지는 몸짓(빛 없음, 무고와 같다), 2단계 = 손을 내린 뒤 발광
+const HAND = { camai: 'button', earbud: 'tilt', glasses: 'frame' };
+const REAL_GESTURE = { camai: () => null, earbud: () => 'cock', glasses: () => null };
 const pick = (r, a) => a[Math.floor(r() * a.length)];
 const SIG = { camai: '#ff5a3c', earbud: '#5aa8ff', glasses: '#6fdc95' }; // 신호색: 목격한 빛을 가리킬 때만 쓴다
 const FACE = { calm: 0, tense: 1, high: 2, meltdown: 3 };
@@ -97,9 +98,9 @@ export function startProctor({ renderer, ui, onEnd }) {
   const ov = $('p-ov');
   // 시작 안내: 잡을 사람 4명 + 키보드 그림. 창이 낮으면 키보드 그림만 줄인다
   const showStart = () => {
-    const G = P.guide, sc = Math.min(0.92, innerWidth / 1100, (innerHeight - 380) / 340);
+    const G = P.guide, sc = Math.min(0.92, innerWidth / 1100, (innerHeight - 490) / 340);
     ov.hidden = false; ui.querySelector('.hud').classList.add('cover');
-    ov.innerHTML = `<div class="panel start"><h2>${P.startTitle}</h2><p class="rule">${G.rule}<small>${G.ruleSub}</small></p>
+    ov.innerHTML = `<div class="panel start"><div class="clues">${G.clues.map((c, k) => `${k ? '<i class="arr">→</i>' : ''}<div class="plate"><small>${c.h}</small><b>${c.t}</b><span>${c.d}</span></div>`).join('')}</div>
       <div class="who">${G.who.map((w, k) => `${k === 3 ? '<div class="sep"></div>' : ''}<figure class="${w.no ? 'no' : ''}">${bust({ ...w.o, w: 124 })}<em>${w.tag}</em><b>${w.t}</b><span>${w.d}</span></figure>`).join('')}</div>
       <div class="kwrap" style="--hk-scale:${Math.max(0.5, sc)}">${kbd(G.keys)}</div>
       <p class="co"><b>[!]</b>${G.co}</p><p class="cta">${P.clickStart}</p></div>`;
@@ -226,11 +227,11 @@ export function startProctor({ renderer, ui, onEnd }) {
   }
 
   // 신호(진짜)·닮은꼴 시작. 몸짓은 같고, 발광·소리는 진짜 신호에만 붙는다
+  // 진짜는 1단계(손, lookalikeDur) 뒤 tickSignals 가 2단계(발광, name 몸짓)로 넘긴다
   function start(e, name, real, kind) {
-    const dur = real ? TUNE.signalDur[kind] : TUNE.lookalikeDur;
-    if (name) e.person.setGesture(name, t, dur);
-    e.sig = { name, kind, until: t + dur, real, sighted: false, neutral: false, ph: rand() * 6 };
-    if (real) coLook(e, kind);
+    const first = real ? HAND[kind] : name;
+    if (first) e.person.setGesture(first, t, TUNE.lookalikeDur);
+    e.sig = { name: first, kind, until: t + TUNE.lookalikeDur, real, phase: 1, then: name, sighted: false, neutral: false, ph: rand() * 6 };
   }
   // 부감독관 시야: 플레이어와 같은 방위각 공식, 관찰자만 다르다. 가리킬 뿐 목격·포착 기록은 건드리지 않는다
   function coLook(e, kind) {
@@ -253,17 +254,17 @@ export function startProctor({ renderer, ui, onEnd }) {
     if (cheating && e.followup) {
       e.followup = false;
       start(e, REAL_GESTURE.earbud(rand), true, 'earbud');
-      e.next = t + TUNE.signalDur.earbud + cycleGap(e);
+      e.next = t + TUNE.lookalikeDur + TUNE.signalDur.earbud + cycleGap(e);
       return;
     }
     if (cheating && rand() > 0.25) {
       if (e.device === 'set') {
         const [g0, g1] = TUNE.setGap;
         start(e, null, true, 'camai'); e.followup = true;
-        e.next = t + TUNE.signalDur.camai + g0 + rand() * (g1 - g0);
+        e.next = t + TUNE.lookalikeDur + TUNE.signalDur.camai + g0 + rand() * (g1 - g0);
       } else {
         start(e, REAL_GESTURE.glasses(rand), true, 'glasses');
-        e.next = t + TUNE.signalDur.glasses + cycleGap(e);
+        e.next = t + TUNE.lookalikeDur + TUNE.signalDur.glasses + cycleGap(e);
       }
       return;
     }
@@ -284,18 +285,25 @@ export function startProctor({ renderer, ui, onEnd }) {
     for (const e of ex) {
       if (e.removed) continue;
       const sg = e.sig, kind = sg && GLOW[sg.kind];
-      if (sg && t >= sg.until) { e.sig = null; if (sg.real) e.person.setGlow(kind, 0); continue; }
+      if (sg && t >= sg.until) {
+        if (sg.real && sg.phase === 1) { // 손을 내리고 발광 시작
+          sg.phase = 2; sg.until = t + TUNE.signalDur[sg.kind]; sg.name = sg.then; sg.neutral = false;
+          if (sg.then) e.person.setGesture(sg.then, t, TUNE.signalDur[sg.kind]);
+          coLook(e, sg.kind);
+        } else { e.sig = null; if (sg.real) e.person.setGlow(kind, 0); continue; }
+      }
       if (!sg) continue;
+      const lit = sg.real && sg.phase === 2; // 1단계 몸짓은 무고와 구분되지 않는다
       const dx = camera.position.x - e.pos.x, dz = camera.position.z - e.pos.z, d = camera.position.distanceTo(e.pos);
-      const vis = sg.real ? signalVisibility(sg.kind, Math.atan2(dx, -dz) * 180 / Math.PI) : 0;
-      if (sg.real) {
+      const vis = lit ? signalVisibility(sg.kind, Math.atan2(dx, -dz) * 180 / Math.PI) : 0;
+      if (lit) {
         const att = d > TUNE.glowDist ? 0 : 1 - d / TUNE.glowDist * 0.5;
         const blink = sg.kind === 'glasses' ? 1 : 0.6 + 0.4 * (0.5 + 0.5 * Math.sin((t + sg.ph) * 12));
         e.person.setGlow(kind, vis * att * blink * (sg.kind === 'glasses' ? TUNE.lensGlowMax : sg.kind === 'camai' ? TUNE.buttonGlowMax : 1));
         if (sg.kind === 'earbud' && d <= 2 && 1 - d / 2 > whisper) { whisper = 1 - d / 2; whisperE = e; }
       }
       if (aimNow !== e || d > TUNE.sightDist) continue;
-      if (sg.real && vis >= 0.35 && !sg.sighted) {
+      if (lit && vis >= 0.35 && !sg.sighted) {
         sg.sighted = true; e.seen++; e.lastSight = t;
         journal(e.id, P.signs.sight[sg.kind], `sus sg-${sg.kind}`);
         witness(e, P.signs.sight[sg.kind], 'real', sg.until + 2, sg.kind);
