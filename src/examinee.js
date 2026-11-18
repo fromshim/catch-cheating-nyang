@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { audio } from './audio.js';
 import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
 import { buildClassroom, seatExaminees, createPerson, animatePerson, seatPos, autoResize } from './scene.js';
 import { mulberry32 } from './logic.js';
@@ -14,8 +15,8 @@ const PATHS = [
 
 export function startExaminee({ renderer, ui, onEnd }) {
   const seed = (Math.random() * 1e9) | 0;
-  const { scene } = buildClassroom();
-  const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.05, 60);
+  const { scene, setClock } = buildClassroom();
+  const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.2, 60);
   const s = seatPos(SEAT);
   camera.position.set(s.x, 1.3, s.z);
   const controls = new PointerLockControls(camera, renderer.domElement);
@@ -31,17 +32,22 @@ export function startExaminee({ renderer, ui, onEnd }) {
     scene.add(p.group);
     const geo = new THREE.CircleGeometry(RANGE, 20, Math.PI / 2 - HALF, HALF * 2);
     geo.rotateX(-Math.PI / 2);
-    const cone = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0xffcc44, transparent: true, opacity: 0.28, depthWrite: false, side: THREE.DoubleSide }));
+    const cone = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0xff5a36, transparent: true, opacity: 0.4, depthWrite: false, side: THREE.DoubleSide }));
     cone.position.y = 0.03;
+    // 가장자리 선(원뿔과 같은 좌표계라 자식으로 붙인다)
+    const edge = [new THREE.Vector3(0, 0.005, 0)];
+    for (let k = 0; k <= 20; k++) { const a = Math.PI / 2 - HALF + (HALF * 2 * k) / 20; edge.push(new THREE.Vector3(RANGE * Math.cos(a), 0.005, -RANGE * Math.sin(a))); }
+    cone.add(new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(edge), new THREE.LineBasicMaterial({ color: 0xff5a36 })));
     scene.add(cone);
     return { p, cone };
   });
 
   let dev = null, running = false, started = false, ended = false, raf = 0;
   let t = 0, timeLeft = Number(new URLSearchParams(location.search).get("t")) || 120, // 개발용: ?t=5 로 시험 시간 단축
-    progress = 0, susp = 0, using = false;
+    T0 = timeLeft, progress = 0, susp = 0, using = false, lastTick = 0, viewIn = null;
 
-  ui.innerHTML = `<div class="hud examinee"><div class="hud-center"><b id="e-time">120</b><span>${E.timeLeft}</span></div>
+  ui.innerHTML = `<div class="hud examinee"><div class="vignette" id="e-vig"></div><div class="hud-center"><b id="e-time">120</b><span>${E.timeLeft}</span></div>
+    <div id="e-view" class="viewstate"></div>
     <div class="gauges">
       <div class="gauge"><label>${E.progress}</label><i><u id="e-prog"></u></i></div>
       <div class="gauge warn"><label>${E.suspicion}</label><i><u id="e-susp"></u></i></div></div>
@@ -63,11 +69,12 @@ export function startExaminee({ renderer, ui, onEnd }) {
     if (b) {
       dev = b.dataset.d;
       panel(C.deviceNames[dev], E.startLines, '', E.clickStart);
-    } else if (dev) controls.lock();
+    } else if (dev) { audio.init(); audio.hum(true); controls.lock(); }
   };
 
   const setRun = (v) => {
     running = v; started = true; ov.hidden = v;
+    audio.hum(v); if (!v) audio.heartbeat(0);
     if (!v && !ended) panel(E.paused, [], '', E.clickResume);
   };
   const onLockErr = () => { if (!ended && dev) setRun(true); };
@@ -80,7 +87,7 @@ export function startExaminee({ renderer, ui, onEnd }) {
   addEventListener('keydown', down); addEventListener('keyup', up);
 
   function finish(id) {
-    ended = true; running = false; controls.unlock();
+    ended = true; running = false; audio.stopAll(); controls.unlock();
     const d = E.devices[dev];
     onEnd({
       ending: { ...E.endings[id], id }, 
@@ -125,6 +132,15 @@ export function startExaminee({ renderer, ui, onEnd }) {
       susp += (seen ? D.risk_in * (1 + (RANGE - near) / RANGE) : 2) * dt;
     } else susp -= 6 * dt;
     progress = Math.min(100, progress); susp = Math.max(0, susp);
+    if (viewIn !== seen) {
+      viewIn = seen;
+      const vs = $('e-view'); vs.textContent = seen ? E.inView : E.outView; vs.classList.toggle('in', seen);
+      $('e-vig').style.opacity = seen ? 1 : 0;
+    }
+    audio.heartbeat(seen ? 0.8 : 0);
+    const sec = Math.ceil(timeLeft);
+    if (timeLeft <= 30 && sec > 0 && sec !== lastTick) { lastTick = sec; audio.tick(1 - sec / 31); }
+    setClock(Math.max(0, timeLeft / T0));
     $('e-use').hidden = !using;
     $('e-time').textContent = Math.max(0, Math.ceil(timeLeft));
     $('e-prog').style.width = progress + '%';
@@ -137,7 +153,7 @@ export function startExaminee({ renderer, ui, onEnd }) {
 
   return {
     stop() {
-      cancelAnimationFrame(raf); ended = true; stopResize();
+      cancelAnimationFrame(raf); ended = true; audio.stopAll(); stopResize();
       controls.unlock(); controls.dispose();
       removeEventListener('keydown', down); removeEventListener('keyup', up);
       document.removeEventListener('pointerlockerror', onLockErr);

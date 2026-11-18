@@ -1,6 +1,7 @@
 import * as THREE from 'three';
+import { audio } from './audio.js';
 import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
-import { buildClassroom, seatExaminees, animatePerson, seatPos, exitPath, autoResize, ROOM } from './scene.js';
+import { buildClassroom, seatExaminees, animatePerson, seatPos, exitPath, autoResize, ROOM, SEAT_RADIUS } from './scene.js';
 import { assignExaminees, evaluateEnding, inspectFound, isElectronic, mulberry32, TUNE, stressStep, stressLevel, heatStep, calmStep, cheaterMul, innocentTellMul, parentRisk, nervousSignProb, releaseNoEvidence } from './logic.js';
 import { C } from './content.js';
 
@@ -15,8 +16,8 @@ const pick = (r, a) => a[Math.floor(r() * a.length)];
 export function startProctor({ renderer, ui, onEnd }) {
   const seed = (Math.random() * 1e9) | 0;
   const rand = mulberry32(seed);
-  const { scene, flicker } = buildClassroom();
-  const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.05, 60);
+  const { scene, flicker, setClock, ring } = buildClassroom();
+  const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.2, 60);
   camera.position.set(0, 1.65, ROOM.zMin + 1.5);
   camera.lookAt(0, 1.1, 0);
   const controls = new PointerLockControls(camera, renderer.domElement);
@@ -40,7 +41,7 @@ export function startProctor({ renderer, ui, onEnd }) {
   let heat = 0, calmTime = 0, emptyInspects = 0, meltdowns = 0, inspectCd = 0, boldFired = false;
   const T0 = timeLeft, glassesChecked = new Set();
   let dStage = 0, dEnd = 0, bannerOff = 0;
-  let risk = 0, pulse = 0, aimKey = '';
+  let risk = 0, pulse = 0, aimKey = '', aimPrev = null, lastTick = 0, lastJ = null;
   const totalCheaters = ex.filter((e) => e.type === 'cheater').length;
   const riskOf = () => parentRisk({ emptyInspects, meltdowns, wrongArrests: state.wrongCaught.length });
   let running = false, started = false, ended = false, raf = 0;
@@ -49,7 +50,7 @@ export function startProctor({ renderer, ui, onEnd }) {
   // HUD
   ui.innerHTML = `
     <div class="hud proctor">
-      <div class="vignette" id="p-vig"></div>
+      <div class="vignette" id="p-vig"></div><div class="emp-flash" id="p-flash"></div>
       <div class="hud-center"><b id="p-time">0:00</b><span id="p-counts"></span></div>
       <div id="p-banner" class="banner" hidden></div>
       <div class="gauges">
@@ -62,9 +63,10 @@ export function startProctor({ renderer, ui, onEnd }) {
       <div class="cross"></div>
       <ul class="keys">${P.keys.map(([k, v]) => `<li data-k="${k}"><kbd>${k}</kbd>${v}</li>`).join('')}</ul>
       <div id="p-aim" class="aim" hidden></div>
+      <div id="p-act" class="acthint" hidden>${P.actHint.replace(/(\[E\][^[]*)/, '<s>$1</s>')}</div>
       <div id="p-insp" class="insp" hidden><i><u></u></i><span>${P.inspecting}</span></div>
       <div id="p-caps" class="caps"></div>
-      <div class="ticker"><div class="ticker-in">${P.ticker.join('　　●　　')}　　●　　${P.ticker.join('　　●　　')}</div></div>
+      <div class="ticker"><b class="ticker-tag">${P.tickerTag}</b><div class="ticker-in">${P.ticker.join('　　●　　')}　　●　　${P.ticker.join('　　●　　')}</div></div>
       <div id="p-ov" class="overlay"></div>
     </div>`;
   const $ = (id) => ui.querySelector('#' + id);
@@ -74,13 +76,14 @@ export function startProctor({ renderer, ui, onEnd }) {
     ov.innerHTML = `<div class="panel"><h2>${title}</h2>${lines.map((l) => `<p>${l}</p>`).join('')}<p class="cta">${btn}</p></div>`;
   };
   showOverlay(P.startTitle, P.startLines, P.clickStart);
-  ov.onclick = () => controls.lock();
+  ov.onclick = () => { audio.init(); audio.hum(true); controls.lock(); };
 
   // 포인터락이 안 되는 환경(헤드리스 등)이면 락 없이 그냥 진행한다.
   const onLockErr = () => { if (!ended) setRun(true); };
   const setRun = (v) => {
     running = v; started = true;
     ov.hidden = v;
+    audio.hum(v); if (!v) audio.heartbeat(0);
     if (!v && !ended) showOverlay(P.paused, [], P.clickResume);
   };
   controls.addEventListener('lock', () => setRun(true));
@@ -88,9 +91,11 @@ export function startProctor({ renderer, ui, onEnd }) {
   document.addEventListener('pointerlockerror', onLockErr);
 
   const capsEl = $('p-caps'); const caps = [];
-  const cap = (m) => {
+  const cap = (m, chip) => {
     const el = document.createElement('div');
-    el.textContent = m; capsEl.append(el); caps.push({ el, life: 5 });
+    el.textContent = m;
+    if (chip) { const c = document.createElement('em'); c.className = 'chip'; c.textContent = chip; el.append(c); }
+    capsEl.append(el); caps.push({ el, life: 5 });
     if (caps.length > 3) caps.shift().el.remove();
   };
   const restart = (el, cls) => { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); };
@@ -109,16 +114,27 @@ export function startProctor({ renderer, ui, onEnd }) {
   const eLi = ui.querySelector('.keys li[data-k="E 홀드"]'); eLi.querySelector('kbd').append(cd);
   const qLi = ui.querySelector('.keys li[data-k="Q"]');
   const logEl = $('p-log');
-  const journal = (id, text) => {
+  const journal = (id, text, sus = false) => {
     logEl.querySelector('.empty')?.remove();
+    // 같은 학생·같은 문구가 연속이면 새 줄 대신 ×N
+    if (lastJ && lastJ.id === id && lastJ.text === text && lastJ.li.isConnected) {
+      lastJ.li.lastChild.textContent = ` ×${++lastJ.n}`; return;
+    }
     const li = document.createElement('li');
-    li.textContent = P.log(id, text);
+    if (sus) li.className = 'sus';
+    li.append(P.log(id, text), document.createElement('em'));
+    lastJ = { id, text, li, n: 1 };
     logEl.prepend(li);
     while (logEl.children.length > 12) logEl.lastChild.remove();
   };
 
   const banner = (text, withdraw) => {
-    const b = $('p-banner'); b.textContent = text; b.hidden = false; b.classList.toggle('withdraw', !!withdraw);
+    const b = $('p-banner'); b.hidden = false; b.classList.toggle('withdraw', !!withdraw);
+    b.innerHTML = withdraw
+      ? `<p class="old"><s>${P.directive.start}</s></p><span class="stamp">${P.stamp.correction}</span><p>${text}</p>`
+      : `<p>${text}</p>`;
+    restart(b, 'drop');
+    withdraw ? audio.stamp() : audio.chime();
   };
   const dir = new THREE.Vector3(), v = new THREE.Vector3();
   // 화면 중앙에 가장 가깝게 걸린 수험생(거리 maxDist 안)
@@ -142,10 +158,10 @@ export function startProctor({ renderer, ui, onEnd }) {
     e.person.setGesture(name, t, SIGN_DUR[name] ?? 1.6);
     if (aimed(8) !== e) return;
     // 멀리서는 무슨 징후인지 안 보인다
-    if (camera.position.distanceTo(e.pos) > TUNE.signDetailDist) return journal(e.id, P.signs.far.text);
+    if (camera.position.distanceTo(e.pos) > TUNE.signDetailDist) return journal(e.id, P.signs.far.text, false);
     const s = P.signs[name];
     if (s.sus) e.seen++;
-    journal(e.id, s.text);
+    journal(e.id, s.text, s.sus);
   }
   function schedule(e) {
     let names, lo, hi, div;
@@ -171,6 +187,7 @@ export function startProctor({ renderer, ui, onEnd }) {
   function remove(e) {
     e.removed = true;
     e.person.leave(exitPath(e.i));
+    e.person.setHighlight(false);
   }
 
   // src 반경 neighborDist 안의 다른 학생을 긴장시키고 그 수를 돌려준다
@@ -189,13 +206,15 @@ export function startProctor({ renderer, ui, onEnd }) {
     if (e.type === 'cheater') {
       state.caught.push(e.id);
       emp = Math.min(100, emp + 25);
-      cap(P.cap.caughtRight(e.id, addHeat(TUNE.heatArrest), n, e.found || e.empFlag));
+      const ev = e.found || e.empFlag;
+      cap(P.cap.caughtRight(e.id, addHeat(TUNE.heatArrest), n, ev), ev ? '' : P.stamp.noEvidence);
     } else {
       state.wrongCaught.push({ id: e.id, type: e.type });
       const h = addHeat(TUNE.heatArrest);
       cap(P.cap.caughtWrong(e.id, syncRisk(), h, n));
     }
     remove(e);
+    audio.stamp();
   }
 
   function inspect(e) {
@@ -217,6 +236,8 @@ export function startProctor({ renderer, ui, onEnd }) {
 
   function fireEmp() {
     emp = 0; state.empCount++; flick = 1.2;
+    ring.pulse(camera.position.x, camera.position.z, TUNE.empRadius);
+    restart($('p-flash'), 'go'); audio.emp();
     $('p-audit').textContent = state.empCount;
     let hit = 0, n = 0;
     const target = aimed(8);
@@ -243,6 +264,7 @@ export function startProctor({ renderer, ui, onEnd }) {
 
   function finish() {
     ended = true; running = false;
+    audio.stopAll();
     controls.unlock();
     // 증거 없이 잡은 범인은 시험 후 석방될 수 있다
     const { released } = releaseNoEvidence(
@@ -259,6 +281,7 @@ export function startProctor({ renderer, ui, onEnd }) {
     raf = requestAnimationFrame(frame);
     const dt = Math.min(clock.getDelta(), 0.05);
     if (running && !ended) update(dt);
+    ring.update(dt);
     for (const p of people) animatePerson(p, t, dt);
     renderer.render(scene, camera);
   }
@@ -273,6 +296,16 @@ export function startProctor({ renderer, ui, onEnd }) {
     camera.position.x = Math.max(-ROOM.x + 0.4, Math.min(ROOM.x - 0.4, camera.position.x));
     camera.position.z = Math.max(ROOM.zMin + 0.4, Math.min(ROOM.zMax - 0.4, camera.position.z));
     camera.position.y = 1.65;
+    // 학생 몸은 통과 못 한다(책상은 통과 가능)
+    for (const e of ex) {
+      if (e.removed) continue;
+      const dx = camera.position.x - e.pos.x, dz = camera.position.z - e.pos.z, d = Math.hypot(dx, dz);
+      if (d < SEAT_RADIUS) {
+        const k = d > 1e-4 ? SEAT_RADIUS / d : 0;
+        camera.position.x = e.pos.x + (d > 1e-4 ? dx * k : SEAT_RADIUS);
+        camera.position.z = e.pos.z + dz * k;
+      }
+    }
 
     // 긴장·멘붕·부정행위 진척
     const mul = cheaterMul(heat, calmTime);
@@ -321,7 +354,7 @@ export function startProctor({ renderer, ui, onEnd }) {
     // 조준 라벨
     const a = aimed(8), aim = $('p-aim');
     if (a) {
-      v.copy(a.pos).add(new THREE.Vector3(0, 0.55, 0)).project(camera);
+      v.copy(a.pos).add(new THREE.Vector3(0, 0.25, 0)).project(camera);
       aim.hidden = false;
       aim.style.left = ((v.x + 1) / 2) * innerWidth + 'px';
       aim.style.top = ((1 - v.y) / 2) * innerHeight + 'px';
@@ -331,6 +364,10 @@ export function startProctor({ renderer, ui, onEnd }) {
         : P.aimLabel(a.id, a.seen) + (a.found ? ` · ${P.foundTag}` : a.empFlag ? ` · ${P.inspected.emp}` : '');
       if (key !== aimKey) { aimKey = key; aim.innerHTML = key; }
     } else aim.hidden = true;
+    if (a !== aimPrev) { aimPrev?.person.setHighlight(false); a?.person.setHighlight(true); aimPrev = a; }
+    const act = $('p-act');
+    act.hidden = !reach();
+    act.classList.toggle('cool', inspectCd > 0);
 
     for (let k = caps.length - 1; k >= 0; k--) if ((caps[k].life -= dt) <= 0) caps.splice(k, 1)[0].el.remove();
     const sec = Math.max(0, Math.ceil(timeLeft)), low = timeLeft <= 30;
@@ -340,7 +377,7 @@ export function startProctor({ renderer, ui, onEnd }) {
     const cs = P.counts(state.caught.length, totalCheaters);
     if ($('p-counts').textContent !== cs) $('p-counts').textContent = cs;
     pulse = Math.max(0, pulse - dt * 2);
-    const vig = Math.min(1, Math.max(risk / 100 * 0.7, low ? 0.375 + 0.125 * Math.sin(t * 6) : 0) + pulse * 0.5);
+    const vig = Math.min(1, risk / 100 * 0.7 + pulse * 0.5);
     $('p-vig').style.opacity = vig.toFixed(2);
     const cdS = Math.ceil(inspectCd);
     eLi.classList.toggle('cool', cdS > 0);
@@ -354,13 +391,18 @@ export function startProctor({ renderer, ui, onEnd }) {
     $('p-emp').parentNode.classList.toggle('ready', emp >= 100);
     qLi.classList.toggle('off', emp < 100);
     $('p-risk').style.width = risk + '%';
+    ring.preview(camera.position.x, camera.position.z, TUNE.empRadius, emp >= 100);
+    setClock(Math.max(0, timeLeft / T0));
+    if (t >= 30) ui.querySelector('.keys').classList.add('dim');
+    if (low && sec !== lastTick && sec > 0) { lastTick = sec; audio.tick(1 - sec / 31); }
+    audio.heartbeat(inspectT > 0 ? 0.6 + 0.4 * (inspectT / 2) : risk < 40 ? 0 : ((risk - 40) / 60) * 0.5);
     if (timeLeft <= 0) finish();
   }
   frame();
 
   return {
     stop() {
-      cancelAnimationFrame(raf); ended = true;
+      cancelAnimationFrame(raf); ended = true; audio.stopAll();
       stopResize(); controls.unlock(); controls.dispose();
       removeEventListener('keydown', kd); removeEventListener('keyup', ku);
       document.removeEventListener('pointerlockerror', onLockErr);
