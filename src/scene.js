@@ -481,3 +481,92 @@ export function renderPortraits(list, size = 220) {
   r.dispose(); r.forceContextLoss();
   return urls;
 }
+
+// 도감 카드용 확대 모델. 반환 { glasses:{on,off}, set:{on,off} } (PNG dataURL). 카메라 구도는 고정이고
+// 부품 화면 좌표(이미지 크기 대비 0~1)는 renderDeviceCards.anchors 에 있다. 이름·리더 라인은 호출 쪽이 SVG 로 얹는다.
+const DEV_P = { // 월드 좌표 상수(단위는 대략 cm). anchors 계산과 모델 배치가 같이 쓴다
+  glasses: { target: [0.3, 0, -0.5], dist: 5.6, fov: 30, az: 35, el: 8, frame: [-0.65, 0.4, 0.02], lens: [0.65, 0, 0.02], projector: [-1.2, 0.15, -0.55] },
+  set: { target: [0, 0.2, 0], dist: 11, fov: 30, az: 0, el: 38, button: [-2.4, 0.07, 0], earbud: [0, 0.15, 0.3], relay: [2.3, 0.16, 0] },
+};
+const devCam = (k, aspect) => {
+  const p = DEV_P[k], cam = new THREE.PerspectiveCamera(p.fov, aspect, 0.1, 50);
+  const az = p.az * Math.PI / 180, el = p.el * Math.PI / 180, t = new THREE.Vector3(...p.target);
+  cam.position.set(t.x + Math.sin(az) * Math.cos(el) * p.dist, t.y + Math.sin(el) * p.dist, t.z + Math.cos(az) * Math.cos(el) * p.dist);
+  cam.lookAt(t); cam.updateMatrixWorld(); return cam;
+};
+const devAnchor = (k, name, aspect) => {
+  const v = new THREE.Vector3(...DEV_P[k][name]).project(devCam(k, aspect));
+  return [+((v.x + 1) / 2).toFixed(3), +((1 - v.y) / 2).toFixed(3)];
+};
+export function renderDeviceCards(size = [620, 552]) {
+  const [W, H] = size, aspect = W / H;
+  const r = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+  r.setSize(W, H, false); r.setPixelRatio(1);
+  const scene = new THREE.Scene(), own = []; // own: 끝나면 dispose 할 재질·지오메트리(haloTex 는 공유라 제외)
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x8a8f99, 1.7));
+  const sun = new THREE.DirectionalLight(0xffffff, 2.0); sun.position.set(-2, 5, 6); scene.add(sun);
+  const M = (c, extra) => { const m = mat(c, extra); own.push(m); return m; };
+  const B = (w, h, d, m, x = 0, y = 0, z = 0, parent = scene) => { const o = box(w, h, d, m); o.position.set(x, y, z); parent.add(o); own.push(o.geometry); return o; };
+  const G = (geo, m, x, y, z, parent) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); parent.add(o); own.push(geo); return o; };
+  const glow = (c, map, op) => { const m = new THREE.MeshBasicMaterial({ color: c, map, transparent: true, opacity: op, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false }); own.push(m); return m; };
+  const shot = (cam) => { r.render(scene, cam); return r.domElement.toDataURL('image/png'); };
+  const out = {};
+
+  // ---- 안경 ----
+  const gl = new THREE.Group(); scene.add(gl);
+  const frameM = M(0x2a3038, { roughness: 0.45 });
+  const lensM = new THREE.MeshBasicMaterial({ color: 0xaac4d4, transparent: true, opacity: 0.3, depthWrite: false, side: THREE.DoubleSide }); own.push(lensM);
+  for (const sx of [-1, 1]) {
+    const cx = sx * 0.65, LW = 1.0, LH = 0.7, t = 0.07; // 렌즈 1.0x0.7 (인게임 0.1x0.07 의 10배)
+    B(LW + 2 * t, t, 0.1, frameM, cx, LH / 2 + t / 2, 0, gl); B(LW + 2 * t, t, 0.1, frameM, cx, -LH / 2 - t / 2, 0, gl); // 윗·아랫테
+    B(t, LH, 0.1, frameM, cx - LW / 2 - t / 2, 0, 0, gl); B(t, LH, 0.1, frameM, cx + LW / 2 + t / 2, 0, 0, gl);
+    G(new THREE.PlaneGeometry(LW, LH), lensM, cx, 0, 0.01, gl);
+    const tmp = B(0.06, 0.08, 1.9, frameM, sx * 1.27, 0.25, -0.95, gl); // 다리: 뒤로 뻗고 살짝 바깥으로 벌어진다
+    tmp.position.x = sx * 1.28; tmp.rotation.y = -sx * 0.1;
+    B(0.07, 0.07, 0.2, frameM, sx * 1.34, 0.2, -1.95, gl).rotation.y = -sx * 0.1; // 다리 끝 꺾임
+  }
+  B(0.26, 0.07, 0.1, frameM, 0, 0.25, 0, gl); // 코걸이(브리지)
+  const nose = G(new THREE.CylinderGeometry(0.04, 0.04, 0.2, 8), frameM, 0, -0.1, 0.1, gl); nose.rotation.z = 0.0;
+  const projM = M(0x15181c, { roughness: 0.4 });
+  B(0.1, 0.12, 0.5, projM, -1.2, 0.2, -0.55, gl); // 왼 다리 안쪽 프로젝터 상자
+  const lensGlow = [], glowG = new THREE.PlaneGeometry(0.6, 0.42); own.push(glowG);
+  const projDot = G(new THREE.SphereGeometry(0.035, 8, 6), new THREE.MeshBasicMaterial({ color: 0x6fdc95 }), -1.14, 0.2, -0.3, gl); own.push(projDot.material);
+  for (const sx of [-1, 1]) { const g = new THREE.Mesh(glowG, glow(0x6fdc95, undefined, 0.4)); g.position.set(sx * 0.65, -0.18, 0.04); gl.add(g); lensGlow.push(g); }
+  const gcam = devCam('glasses', aspect);
+  const setGlass = (on) => { lensGlow.forEach((g) => { g.visible = on; }); projDot.visible = on; };
+  setGlass(true); out.glasses = { on: shot(gcam) }; setGlass(false); out.glasses.off = shot(gcam);
+  scene.remove(gl);
+
+  // ---- 세트 ----
+  const st = new THREE.Group(); scene.add(st);
+  const [bx, , bz] = DEV_P.set.button;
+  const btn = G(new THREE.CylinderGeometry(0.62, 0.62, 0.12, 40), M(0x8a93a0, { roughness: 0.6 }), bx, 0, bz, st);
+  const rim = G(new THREE.TorusGeometry(0.5, 0.025, 8, 40), M(0x6f7783), bx, 0.065, bz, st); rim.rotation.x = Math.PI / 2;
+  const holeM = M(0x30343a), lensDark = new THREE.MeshBasicMaterial({ color: 0x050607 }); own.push(lensDark);
+  const hg = new THREE.CircleGeometry(0.075, 16);
+  [[-0.17, -0.17], [0.17, -0.17], [-0.17, 0.17], [0.17, 0.17]].forEach(([hx, hz], i) => {
+    const h = G(hg, i === 3 ? lensDark : holeM, bx + hx, 0.068, bz + hz, st); h.rotation.x = -Math.PI / 2;
+  });
+  const hal = haloTex(), btnHalo = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 1.1), glow(0xff5a3c, hal, 0.95));
+  btnHalo.position.set(bx + 0.17, 0.09, bz + 0.17); btnHalo.rotation.x = -Math.PI / 2; st.add(btnHalo); own.push(btnHalo.geometry);
+  const [ex, ey, ez] = DEV_P.set.earbud;
+  const ear = G(new THREE.CapsuleGeometry(0.17, 0.3, 6, 12), M(0xe8c4a8, { roughness: 0.5 }), ex, ey, ez, st); ear.rotation.z = Math.PI / 2.6;
+  const earTip = G(new THREE.SphereGeometry(0.08, 10, 8), M(0x9aa0a8), ex - 0.23, ey + 0.14, ez, st);
+  const earHalo = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 1.2), glow(0x5aa8ff, hal, 0.95)); earHalo.position.set(ex, ey + 0.1, ez + 0.2); st.add(earHalo); own.push(earHalo.geometry);
+  const [rx, , rz] = DEV_P.set.relay, relM = M(0x3d434c, { roughness: 0.55 });
+  B(0.9, 0.32, 0.5, relM, rx, 0.16, rz, st); // 중계기도 손바닥보다 작다
+  const screen = G(new THREE.PlaneGeometry(0.42, 0.12), new THREE.MeshBasicMaterial({ color: 0x0e1114 }), rx + 0.15, 0.16, rz + 0.252, st); own.push(screen.material);
+  for (const kx of [-0.32, -0.2]) { const k = G(new THREE.CylinderGeometry(0.04, 0.04, 0.03, 12), M(0x8a93a0), rx + kx, 0.16, rz + 0.255, st); k.rotation.x = Math.PI / 2; }
+  G(new THREE.CylinderGeometry(0.025, 0.025, 0.5, 8), M(0x20242a), rx - 0.32, 0.57, rz - 0.15, st);
+  const scam = devCam('set', aspect); earHalo.lookAt(scam.position);
+  const setHalos = (on) => { btnHalo.visible = earHalo.visible = on; };
+  setHalos(true); out.set = { on: shot(scam) }; setHalos(false); out.set.off = shot(scam);
+
+  scene.traverse((o) => { if (o.isMesh) o.geometry.dispose(); }); own.forEach((o) => o.dispose());
+  r.dispose(); r.forceContextLoss();
+  return out;
+}
+renderDeviceCards.anchors = {
+  glasses: Object.fromEntries(['frame', 'lens', 'projector'].map((n) => [n, devAnchor('glasses', n, 620 / 552)])),
+  set: Object.fromEntries(['button', 'earbud', 'relay'].map((n) => [n, devAnchor('set', n, 620 / 552)])),
+};

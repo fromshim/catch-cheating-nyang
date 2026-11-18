@@ -1,0 +1,50 @@
+/* hudkit 부품 스타일. 모든 클래스에 hk- 를 붙여 게임 기존 CSS 와 겹치지 않게 했다 */
+.hk-kfw { --hk-paper: #F4F1E6; --hk-ink: #1B1F24; --hk-seal: #D7302A; --hk-text: #efe6d2; --hk-mute: #cdbf9f; zoom: var(--hk-scale, 1); flex: none; }
+.hk-dial, .hk-ring, .hk-bust { --hk-mute: #cdbf9f; }
+
+/* 키보드 그림: 960x340 고정 좌표. 키·라벨·선이 같은 좌표계를 쓴다 */
+.hk-kf { position: relative; width: 960px; height: 340px; flex: none; }
+.hk-kf svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.hk-kf polyline { fill: none; stroke: var(--hk-paper); stroke-opacity: .55; stroke-width: 1.5; }
+.hk-kf circle { fill: var(--hk-paper); }
+.hk-kf kbd { position: absolute; width: 56px; height: 56px; min-width: 0; padding: 0; display: flex; align-items: center; justify-content: center; background: var(--hk-paper); color: var(--hk-ink); border: 0; border-radius: 8px; border-bottom: 5px solid #bfb89f; font-family: inherit; font-weight: 800; font-size: 21px; }
+.hk-kf kbd.irrev { color: var(--hk-seal); }
+.hk-l { position: absolute; }
+.hk-l.r { text-align: right; }
+.hk-l b { font-size: 19px; color: var(--hk-paper); }
+.hk-l i { font-style: normal; font-size: 12.5px; color: var(--hk-mute); margin-left: 8px; }
+.hk-l.r i { margin: 0 8px 0 0; }
+.hk-l span { display: block; font-size: 13.5px; color: var(--hk-text); line-height: 1.45; }
+.hk-l span em { font-style: normal; font-weight: 700; color: var(--hk-paper); }
+.hk-l span em.bad { color: #ff8a6a; }
+/* 도감용 축약: 설명 줄을 빼고 양옆 여백을 잘라 낸다 */
+.hk-kfc { width: 660px; height: 340px; overflow: hidden; flex: none; }
+.hk-kfc .hk-kf { margin-left: -140px; }
+.hk-kfc .hk-l span, .hk-kfc .hk-l i { display: none; }
+.hk-kfc .hk-l b { font-size: 22px; }
+
+/* 인물 흉상(SVG). 빛은 깜빡인다 */
+.hk-bust { display: block; }
+.hk-bust .glow { animation: hk-blink .9s ease-in-out infinite; }
+.hk-bust .glow.soft { animation-duration: 2.4s; }
+@keyframes hk-blink { 50% { opacity: .35; } }
+
+/* 학부모 리스크: 민원 서류 더미 */
+.hk-stk { position: relative; width: 62px; height: 78px; display: flex; flex-direction: column-reverse; padding-bottom: 3px; border-bottom: 2px solid #efe6d288; }
+.hk-stk s { display: block; height: 6px; margin-top: 1px; background: #F4F1E6; box-shadow: 0 1px 0 #0008; visibility: hidden; text-decoration: none; }
+.hk-stk s.on { visibility: visible; }
+.hk-stk s.hot { background: #ef9d92; }
+.hk-stk s.new { background: #fff; animation: hk-drop .45s cubic-bezier(.2, 1.3, .4, 1); }
+@keyframes hk-drop { from { transform: translateY(-40px) rotate(-8deg); opacity: 0; } }
+.hk-stk::before { content: attr(data-label); position: absolute; left: 0; right: -4px; top: 0; border-top: 1px dashed #D7302A; color: #ff8a7a; font-size: 10px; line-height: 12px; text-align: right; padding-top: 1px; }
+.hk-stk.danger { animation: hk-wob .5s ease-in-out infinite; }
+@keyframes hk-wob { 50% { transform: rotate(1.5deg); } }
+
+/* 눈치 다이얼 · 조준점 링 */
+.hk-dial { display: block; }
+.hk-dial text { font-size: 9px; fill: #cdbf9f; }
+.hk-ring { display: block; }
+
+@media (prefers-reduced-motion: reduce) {
+  .hk-bust .glow, .hk-stk s.new, .hk-stk.danger { animation: none; }
+}
