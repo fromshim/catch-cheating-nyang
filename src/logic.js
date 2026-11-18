@@ -11,12 +11,33 @@ export function mulberry32(seed) {
   };
 }
 
-export const DEVICES = ['paper', 'watch', 'earbud', 'camai', 'glasses'];
-export const isElectronic = (device) => device !== 'paper';
+export const DEVICES = ['earbud', 'camai', 'glasses'];
 
 // 소지품 검사에서 기기를 발견할 확률
-export const INSPECT_PROB = { paper: 0.85, watch: 0.5, earbud: 0.35, camai: 0.3, glasses: 0.15 };
-export const inspectFound = (device, roll) => roll < (INSPECT_PROB[device] ?? 0);
+export const INSPECT_PROB = { earbud: 0.4, camai: 0.3, glasses: 0.15 };
+// 신호를 목격한 직후(redHandedWindow 초 이내) 검사를 시작하면 발견 확률 가산. sinceSighting: 마지막 목격 후 경과 초(없으면 Infinity)
+export const inspectChance = (device, sinceSighting) => {
+  const base = INSPECT_PROB[device] ?? 0;
+  return sinceSighting <= TUNE.redHandedWindow ? Math.min(0.95, base + TUNE.redHandedBonus) : base;
+};
+export const inspectFound = (device, roll, sinceSighting = Infinity) => roll < inspectChance(device, sinceSighting);
+
+const lerp = (v, a, b) => clamp((v - a) / (b - a), 0, 1);
+
+/**
+ * 기기 신호가 감독관에게 보이는 정도 0~1.
+ * angleDeg = 수험생 기준 감독관의 방위각(-180~180).
+ *   0 = 감독관이 수험생 정면(수험생이 보는 방향, 월드 -z 쪽), +90 = 수험생 본인의 오른쪽(월드 +x), ±180 = 등 뒤.
+ * camai 는 가슴 단추라 정면에서만, glasses 는 렌즈 빛샘이라 비스듬할 때만, earbud 는 오른쪽 귀라 오른쪽~뒤에서 보인다.
+ */
+export function signalVisibility(device, angleDeg) {
+  const a = angleDeg;
+  const m = Math.abs(a);
+  if (device === 'camai') return 1 - lerp(m, 45, 70);
+  if (device === 'glasses') return m < 20 ? 0 : m <= 90 ? lerp(m, 20, 45) : 1 - lerp(m, 90, 120);
+  if (device === 'earbud') return a >= 30 ? 1 : a >= 10 ? lerp(a, 10, 30) : a <= -150 ? 0.6 : 0;
+  return 0;
+}
 
 /**
  * 수험생 배정. 반환: 길이 n 배열, 인덱스 i = 책상 i, id = i + 1.
@@ -66,6 +87,7 @@ export function assignExaminees(seed, n = 24) {
  *   parentRisk?: number,                    // 0~100 학부모 리스크 %. riskSafeBelow 미만이면 고소 판정 없음
  *   riskRoll?: number,                      // 0~1 주사위. riskRoll < parentRisk/100 이면 고소
  * }
+ * missed 의 device 는 DEVICES 3종(earbud|camai|glasses) 중 하나.
  * 반환: { id: 'lawsuit'|'medical'|'lawsuit_risk'|'stalemate'|'topscorer'|'perfect'|'complaint', emp: boolean }
  */
 export function evaluateEnding(state) {
@@ -91,7 +113,7 @@ export const TUNE = {
   neighborDist: 2.4,
   stressProximityRate: 3,
   proximityDist: 1.5,
-  stressEmp: 20,
+  stressEmpCheater: 20, stressEmpInnocent: 5,
   stressDecay: 0.8,
   meltdownAt: 100,
   // 교실 경계도(heat) 0~100
@@ -102,7 +124,12 @@ export const TUNE = {
   boldMax: 1.6, // 대담 배율 상한
   proximityDwell: 3, // 근접 긴장은 이 시간(초) 이상 머문 뒤부터 (판정은 proctor)
   empRadius: 4,
-  signDetailDist: 3, // 이보다 멀면 징후 종류가 안 보임
+  redHandedWindow: 4, redHandedBonus: 0.4, // 신호 목격 후 4초 안에 검사하면 발견 확률 +0.4(최대 0.95)
+  doneTellMul: 1 / 3, // 베끼기를 끝낸 범인의 신호 빈도 배율
+  sightDist: 5, glowDist: 7, // 일지 기록 최대 거리, 발광이 보이는 최대 거리
+  signalDur: { earbud: 3.5, camai: 3, glasses: 4 }, // 신호 지속 초
+  signalGap: { earbud: [10, 18], camai: [9, 16], glasses: [9, 16] }, // 신호 간격 초(배율 1 기준)
+  lookalikeDur: 1.2,
   releaseNoEvidence: 0.5, // 증거 없이 잡힌 범인이 석방될 확률
   nervousSignAt: 30,
   directiveAt: 0.5, // 전체 시험 시간 대비 지침 방송 시점 비율

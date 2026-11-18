@@ -2,6 +2,7 @@
 let ctx = null, master = null, noiseBuf = null;
 let humNodes = null;
 let beat = { next: 0, rate: 0 };
+let wh = { next: 0 };
 
 const ok = () => ctx && ctx.state !== 'closed';
 
@@ -155,8 +156,19 @@ export const audio = {
     if (beat.next < t) beat.next = t + 0.1; // 탭 전환 등으로 밀렸을 때 따라잡기 방지
   },
 
+  // 새는 소리: 대역통과 노이즈를 끊어 웅얼거림처럼. vol 0~1, 0이면 정지. 매 프레임 호출 가능(음절 시각에만 노드 생성)
+  whisper(vol) {
+    if (!ok()) return;
+    if (!vol) { wh.next = 0; return; }
+    const t = ctx.currentTime;
+    if (t < wh.next) return;
+    const dur = 0.07 + Math.random() * 0.12;
+    burst('bandpass', 500 + Math.random() * 1300, dur, 0.04 + 0.2 * Math.min(1, vol), t);
+    wh.next = t + dur + 0.04 + Math.random() * (Math.random() < 0.25 ? 0.5 : 0.12);
+  },
+
   stopAll() {
-    beat = { next: 0, rate: 0 };
+    beat = { next: 0, rate: 0 }; wh = { next: 0 };
     if (ok()) stopHum();
   },
 };

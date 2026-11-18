@@ -2,15 +2,13 @@ import * as THREE from 'three';
 import { audio } from './audio.js';
 import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
 import { buildClassroom, seatExaminees, animatePerson, seatPos, exitPath, autoResize, ROOM, SEAT_RADIUS } from './scene.js';
-import { assignExaminees, evaluateEnding, inspectFound, isElectronic, mulberry32, TUNE, stressStep, stressLevel, heatStep, calmStep, cheaterMul, innocentTellMul, parentRisk, nervousSignProb, releaseNoEvidence } from './logic.js';
+import { assignExaminees, evaluateEnding, inspectChance, signalVisibility, mulberry32, TUNE, stressStep, stressLevel, heatStep, calmStep, cheaterMul, innocentTellMul, parentRisk, nervousSignProb, releaseNoEvidence } from './logic.js';
 import { C } from './content.js';
 
 const P = C.proctor;
-const SIGNS_BY = {
-  paper: ['sleeve'], watch: ['wrist'], earbud: ['ear', 'lips'], camai: ['freeze'], glasses: ['glint'],
-};
-const SIGN_DUR = { freeze: 4, glint: 2.5, look: 2, spark: 3 };
-const NERVOUS = ['look', 'ear', 'freeze', 'lips', 'sleeve'];
+const KIND = { camai: 'button', earbud: 'ear', glasses: 'lens' }; // 기기 → 발광 부위
+// 진짜 신호 몸짓은 발광 부위(단추·귀)를 손으로 가리지 않는다. 손 대는 동작은 닮은꼴 몫
+const REAL_GESTURE = { camai: () => null, earbud: () => 'cock', glasses: (r) => (r() < 0.5 ? 'frame' : null) };
 const pick = (r, a) => a[Math.floor(r() * a.length)];
 
 export function startProctor({ renderer, ui, onEnd }) {
@@ -29,12 +27,13 @@ export function startProctor({ renderer, ui, onEnd }) {
     const s = seatPos(i);
     person.glasses.visible = e.glasses;
     return {
-      ...e, i, person, removed: false, seen: 0, found: false, empFlag: false,
+      ...e, i, person, removed: false, seen: 0, lastSight: null, sig: null, deviceDead: false, found: false, empFlag: false,
       stress: 0, dwell: 0, meltdown: false, progress: 0, done: false, inspected: null,
       pos: new THREE.Vector3(s.x, 1.25, s.z), next: 2 + rand() * 6,
     };
   });
 
+  const seenDev = new Set();
   const state = { caught: [], wrongCaught: [], missed: [], hearingDamaged: false, empCount: 0, released: [], directive: null, directiveCount: 0 };
   let t = 0, timeLeft = Number(new URLSearchParams(location.search).get("t")) || 180, // 개발용: ?t=5 로 시험 시간 단축
     emp = 0, flick = 0, inspectT = 0, inspectId = null;
@@ -63,13 +62,14 @@ export function startProctor({ renderer, ui, onEnd }) {
       <div class="cross"></div>
       <ul class="keys">${P.keys.map(([k, v]) => `<li data-k="${k}"><kbd>${k}</kbd>${v}</li>`).join('')}</ul>
       <div id="p-aim" class="aim" hidden></div>
-      <div id="p-act" class="acthint" hidden>${P.actHint.replace(/(\[E\][^[]*)/, '<s>$1</s>')}</div>
+      <div id="p-act" class="acthint" hidden>${P.actHint.replace(/(\[E\][^[]*)/, '<s>$1</s>')}<span id="p-hot" class="hot"></span></div>
       <div id="p-insp" class="insp" hidden><i><u></u></i><span>${P.inspecting}</span></div>
       <div id="p-caps" class="caps"></div>
       <div class="ticker"><b class="ticker-tag">${P.tickerTag}</b><div class="ticker-in">${P.ticker.join('　　●　　')}　　●　　${P.ticker.join('　　●　　')}</div></div>
       <div id="p-ov" class="overlay"></div>
     </div>`;
   const $ = (id) => ui.querySelector('#' + id);
+  const hotSec = (e) => (e.lastSight !== null && t - e.lastSight <= TUNE.redHandedWindow ? Math.ceil(TUNE.redHandedWindow - (t - e.lastSight)) : 0);
   const ov = $('p-ov');
   const showOverlay = (title, lines, btn) => {
     ov.hidden = false;
@@ -84,8 +84,24 @@ export function startProctor({ renderer, ui, onEnd }) {
     running = v; started = true;
     ov.hidden = v;
     audio.hum(v); if (!v) audio.heartbeat(0);
-    if (!v && !ended) showOverlay(P.paused, [], P.clickResume);
+    if (!v) audio.whisper(0);
+    if (!v && !ended) showPause();
   };
+  // 일시정지 패널 = 기기 신호 도감. 패널 안 클릭은 계속되지 않고, 계속 버튼·바깥 클릭만 계속한다
+  function showPause() {
+    const X = P.codex;
+    ov.hidden = false;
+    ov.innerHTML = `<div class="panel codex"><h2>${P.paused} · ${P.clickResume}</h2>
+      <button class="resume">${X.resume}</button>
+      <h3>${X.title}</h3>
+      <div class="cards">${Object.entries(X.cards).map(([d, c]) => `<div class="card">${seenDev.has(d) ? `<span class="stamp">${X.stamp}</span>` : ''}<h4>${c.name}</h4>
+        <dl><dt>${X.f.real}</dt><dd>${c.real}</dd><dt>${X.f.like}</dt><dd>${c.like}</dd><dt>${X.f.where}</dt><dd>${c.where}</dd></dl><p class="memo">${c.memo}</p></div>`).join('')}</div>
+      <p class="common">${X.common}</p>
+      <table>${P.keys.map(([k, v]) => `<tr><td><kbd>${k}</kbd></td><td>${v}</td></tr>`).join('')}</table>
+      <dl class="gl">${X.gauges.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl></div>`;
+    ov.querySelector('.panel').onclick = (ev) => ev.stopPropagation();
+    ov.querySelector('.resume').onclick = ov.onclick;
+  }
   controls.addEventListener('lock', () => setRun(true));
   controls.addEventListener('unlock', () => { if (!ended && started) setRun(false); });
   document.addEventListener('pointerlockerror', onLockErr);
@@ -154,40 +170,66 @@ export function startProctor({ renderer, ui, onEnd }) {
     return best;
   }
 
-  function sign(e, name) {
-    e.person.setGesture(name, t, SIGN_DUR[name] ?? 1.6);
-    if (aimed(8) !== e) return;
-    // 멀리서는 무슨 징후인지 안 보인다
-    if (camera.position.distanceTo(e.pos) > TUNE.signDetailDist) return journal(e.id, P.signs.far.text, false);
-    const s = P.signs[name];
-    if (s.sus) e.seen++;
-    journal(e.id, s.text, s.sus);
+  // 신호(진짜)·닮은꼴 시작. 몸짓은 같고, 발광·소리는 진짜 신호에만 붙는다
+  function start(e, name, real) {
+    const dur = real ? TUNE.signalDur[e.device] : TUNE.lookalikeDur;
+    if (name) e.person.setGesture(name, t, dur);
+    e.sig = { name, until: t + dur, real, sighted: false, neutral: false, ph: rand() * 6 };
   }
   function schedule(e) {
-    let names, lo, hi, div;
-    if (e.type === 'cheater') {
-      names = e.done || rand() < 0.2 ? ['pen', 'stretch'] : SIGNS_BY[e.device]; lo = 5; hi = 11;
-      div = e.done ? 1 : cheaterMul(heat, calmTime).tell;
-    } else {
-      // 긴장하면 무고한 학생도 더 수상해 보인다(간격이 짧아짐)
-      div = innocentTellMul(e.stress);
-      if (e.type === 'distracted') { names = ['look', 'ear', 'wrist']; lo = 3; hi = 7; }
-      else if (e.type === 'hearing') { names = ['ear']; lo = 10; hi = 18; }
-      else { names = ['stretch', 'pen']; lo = 10; hi = 22; }
-      // 안경 쓴 무고도 가끔 렌즈가 반짝여 안경 불빛만으론 범인을 못 가린다
-      if (e.glasses && rand() < 0.2) names = ['glint'];
+    const cheating = e.type === 'cheater' && !e.deviceDead;
+    if (cheating && rand() > 0.25) {
+      const [lo, hi] = TUNE.signalGap[e.device];
+      start(e, REAL_GESTURE[e.device](rand), true);
+      e.next = t + TUNE.signalDur[e.device] + (lo + rand() * (hi - lo)) / (cheaterMul(heat, calmTime).tell * (e.done ? TUNE.doneTellMul : 1));
+      return;
+    }
+    let names = ['pen', 'stretch', 'look'], lo = 8, hi = 16, div = innocentTellMul(e.stress);
+    if (cheating) { lo = 3; hi = 8; div = 1; } // 신호 사이의 무해 행동
+    else {
+      names = ['scratch', 'button', 'tilt', 'cock', ...names, ...(e.glasses ? ['frame', 'frame'] : [])];
+      if (e.type === 'distracted') { names = ['look', 'scratch', 'button', 'tilt', 'cock', ...(e.glasses ? ['frame'] : [])]; lo = 3; hi = 7; }
+      else if (e.type === 'hearing') { names = ['scratch', 'tilt', 'cock']; lo = 10; hi = 18; }
+      // 긴장한 학생은 닮은꼴 비율이 높아진다
+      if (rand() < nervousSignProb(e.stress)) names = ['scratch', 'button', 'tilt', 'cock', ...(e.glasses ? ['frame'] : [])];
     }
     e.next = t + (lo + rand() * (hi - lo)) / div;
-    let name = pick(rand, names);
-    // 긴장한 학생은 타입 무관하게 수상한 몸짓을 섞는다
-    if (rand() < nervousSignProb(e.stress)) name = pick(rand, e.glasses ? [...NERVOUS, 'glint'] : NERVOUS);
-    sign(e, name);
+    start(e, pick(rand, names), false);
+  }
+  // 신호 진행: 발광·소리·목격 기록. 정체(진짜/닮은꼴)는 보이는 결과로만 구분된다
+  function tickSignals(aimNow) {
+    let whisper = 0;
+    for (const e of ex) {
+      if (e.removed) continue;
+      const kind = KIND[e.device], sg = e.sig;
+      if (sg && t >= sg.until) { e.sig = null; if (sg.real) e.person.setGlow(kind, 0); continue; }
+      if (!sg) continue;
+      const dx = camera.position.x - e.pos.x, dz = camera.position.z - e.pos.z, d = camera.position.distanceTo(e.pos);
+      const vis = sg.real ? signalVisibility(e.device, Math.atan2(dx, -dz) * 180 / Math.PI) : 0;
+      if (sg.real) {
+        const att = d > TUNE.glowDist ? 0 : 1 - d / TUNE.glowDist * 0.5;
+        const blink = e.device === 'glasses' ? 1 : 0.6 + 0.4 * (0.5 + 0.5 * Math.sin((t + sg.ph) * 12));
+        e.person.setGlow(kind, vis * att * blink);
+        if (e.device === 'earbud' && d <= 2) whisper = Math.max(whisper, 1 - d / 2);
+      }
+      if (aimNow !== e || d > TUNE.sightDist) continue;
+      if (sg.real && vis >= 0.35 && !sg.sighted) {
+        sg.sighted = true; e.seen++; e.lastSight = t;
+        journal(e.id, P.signs.sight[e.device], true);
+        if (!seenDev.has(e.device)) { seenDev.add(e.device); cap(P.cap.codex(P.codex.cards[e.device].name)); }
+      } else if (!sg.neutral && !sg.sighted && P.signs.like[sg.name]) {
+        sg.neutral = true; journal(e.id, P.signs.like[sg.name], false);
+      }
+    }
+    audio.whisper(whisper);
   }
 
   function remove(e) {
     e.removed = true;
     e.person.leave(exitPath(e.i));
     e.person.setHighlight(false);
+    if (e.device) e.person.setGlow(KIND[e.device], 0);
+    e.sig = null;
   }
 
   // src 반경 neighborDist 안의 다른 학생을 긴장시키고 그 수를 돌려준다
@@ -223,7 +265,7 @@ export function startProctor({ renderer, ui, onEnd }) {
     if (dStage === 1 && e.glasses) {
       glassesChecked.add(e.id); state.directive = 'followed'; state.directiveCount = glassesChecked.size;
     }
-    if (e.type === 'cheater' && inspectFound(e.device, rand())) {
+    if (e.type === 'cheater' && rand() < inspectChance(e.device, t - (e.lastSight ?? -Infinity))) {
       e.found = true; e.inspected = 'found';
       cap(P.cap.found(e.id, C.deviceNames[e.device], h, n));
     } else {
@@ -239,18 +281,25 @@ export function startProctor({ renderer, ui, onEnd }) {
     ring.pulse(camera.position.x, camera.position.z, TUNE.empRadius);
     restart($('p-flash'), 'go'); audio.emp();
     $('p-audit').textContent = state.empCount;
-    let hit = 0, n = 0;
+    let n = 0;
     const target = aimed(8);
     for (const e of ex) {
       if (e.removed) continue;
       if (Math.hypot(e.pos.x - camera.position.x, e.pos.z - camera.position.z) > TUNE.empRadius) continue;
-      e.stress = Math.min(100, e.stress + TUNE.stressEmp); n++;
-      if (e.type === 'cheater' && isElectronic(e.device)) {
-        e.person.setGesture('spark', t, 3); e.empFlag = true; hit++;
-        if (target === e) { e.seen++; journal(e.id, P.signs.emp.text); }
-      } else if (e.type === 'hearing') state.hearingDamaged = true;
+      n++;
+      if (e.type === 'cheater' && !e.deviceDead) {
+        const kind = KIND[e.device];
+        e.deviceDead = true; e.sig = null; e.person.setGlow(kind, 0); e.person.flashGlow(kind);
+        e.person.setGesture('emp_' + kind, t, 3);
+        e.stress = Math.min(100, e.stress + TUNE.stressEmpCheater);
+        if (target === e) { e.empFlag = true; e.seen++; journal(e.id, P.signs.emp, true); }
+      } else {
+        e.stress = Math.min(100, e.stress + TUNE.stressEmpInnocent);
+        if (!e.meltdown) e.person.setGesture('look', t, 1.5);
+        if (e.type === 'hearing') state.hearingDamaged = true;
+      }
     }
-    cap(P.cap.emp(state.hearingDamaged ? 'hearing' : hit ? 'hit' : 'none', addHeat(TUNE.heatEmp), n));
+    cap(P.cap.emp(state.hearingDamaged ? 'hearing' : 'none', addHeat(TUNE.heatEmp), n));
   }
 
   const onKey = (down) => (ev) => {
@@ -323,9 +372,10 @@ export function startProctor({ renderer, ui, onEnd }) {
       }
       e.person.setStress(e.stress);
       if (e.meltdown) continue;
-      if (e.type === 'cheater' && !e.done && (e.progress += TUNE.cheatBaseRate * mul.progress * dt) >= 100) e.done = true;
+      if (e.type === 'cheater' && !e.done && !e.deviceDead && (e.progress += TUNE.cheatBaseRate * mul.progress * dt) >= 100) e.done = true;
       if (t >= e.next) schedule(e);
     }
+    tickSignals(aimed(8));
     heat = heatStep(heat, dt); calmTime = calmStep(calmTime, heat, dt);
     if (calmTime > TUNE.boldAfter && !boldFired) { boldFired = true; cap(P.cap.bold); }
     else if (calmTime === 0) boldFired = false;
@@ -360,13 +410,15 @@ export function startProctor({ renderer, ui, onEnd }) {
       aim.style.top = ((1 - v.y) / 2) * innerHeight + 'px';
       // 3m 안이면 확장 카드. 정체(범인 여부)는 절대 싣지 않는다
       const key = camera.position.distanceTo(a.pos) <= 3
-        ? P.aimCard(a.id, P.levels[a.meltdown ? 'meltdown' : stressLevel(a.stress)], a.seen, P.inspected[a.inspected === 'found' ? 'found' : a.empFlag ? 'emp' : a.inspected ?? 'none'])
-        : P.aimLabel(a.id, a.seen) + (a.found ? ` · ${P.foundTag}` : a.empFlag ? ` · ${P.inspected.emp}` : '');
+        ? P.aimCard(a.id, P.levels[a.meltdown ? 'meltdown' : stressLevel(a.stress)], a.seen, P.inspected[a.inspected === 'found' ? 'found' : a.empFlag ? 'emp' : a.inspected ?? 'none'], hotSec(a))
+        : P.aimLabel(a.id, a.seen, hotSec(a)) + (a.found ? ` · ${P.foundTag}` : a.empFlag ? ` · ${P.inspected.emp}` : '');
       if (key !== aimKey) { aimKey = key; aim.innerHTML = key; }
     } else aim.hidden = true;
     if (a !== aimPrev) { aimPrev?.person.setHighlight(false); a?.person.setHighlight(true); aimPrev = a; }
-    const act = $('p-act');
-    act.hidden = !reach();
+    const act = $('p-act'), hotEl = $('p-hot');
+    const rc = reach();
+    act.hidden = !rc;
+    hotEl.textContent = rc && hotSec(rc) ? P.hotHint(hotSec(rc)) : '';
     act.classList.toggle('cool', inspectCd > 0);
 
     for (let k = caps.length - 1; k >= 0; k--) if ((caps[k].life -= dt) <= 0) caps.splice(k, 1)[0].el.remove();

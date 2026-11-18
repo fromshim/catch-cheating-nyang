@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   assignExaminees, evaluateEnding, DEVICES,
   stressStep, stressLevel, heatStep, calmStep, cheaterMul, innocentTellMul, parentRisk,
-  nervousSignProb, releaseNoEvidence, TUNE,
+  nervousSignProb, releaseNoEvidence, TUNE, INSPECT_PROB, inspectChance, inspectFound, signalVisibility,
 } from './logic.js';
 
 test('수험생 배정 수가 규칙대로다', () => {
@@ -19,6 +19,7 @@ test('수험생 배정 수가 규칙대로다', () => {
     assert.ok(g >= 5 && g <= 6);
     for (const e of list) if (e.device === 'glasses') assert.equal(e.glasses, true);
     for (const e of list) assert.equal(e.type === 'cheater', DEVICES.includes(e.device));
+    for (const e of list) if (e.device) assert.ok(['earbud', 'camai', 'glasses'].includes(e.device));
   }
   assert.deepEqual(assignExaminees(7), assignExaminees(7));
 });
@@ -124,4 +125,35 @@ test('releaseNoEvidence', () => {
   const arr = [{ id: 1, evidence: true }, { id: 2, evidence: false }, { id: 3, evidence: false }];
   assert.deepEqual(releaseNoEvidence(arr, () => 0), { kept: [1], released: [2, 3] });
   assert.deepEqual(releaseNoEvidence(arr, () => TUNE.releaseNoEvidence), { kept: [1, 2, 3], released: [] });
+});
+
+test('DEVICES·INSPECT_PROB 는 3종', () => {
+  assert.deepEqual(DEVICES, ['earbud', 'camai', 'glasses']);
+  assert.deepEqual(Object.keys(INSPECT_PROB), ['earbud', 'camai', 'glasses']);
+});
+
+test('inspectChance 목격 보너스와 상한', () => {
+  near(inspectChance('camai', 0), 0.7);
+  near(inspectChance('camai', 4), 0.7);
+  near(inspectChance('camai', 4.01), 0.3);
+  near(inspectChance('camai', Infinity), 0.3);
+  near(inspectChance('earbud', 1), 0.8);
+  near(inspectChance('glasses', 1), 0.55);
+  assert.ok(inspectChance('earbud', 0) <= 0.95);
+  assert.equal(inspectFound('camai', 0.69, 0), true);
+  assert.equal(inspectFound('camai', 0.7, 0), false);
+  assert.equal(inspectFound('camai', 0.29), true);
+  assert.equal(inspectFound('camai', 0.3), false);
+});
+
+test('signalVisibility 경계값', () => {
+  const v = signalVisibility;
+  near(v('camai', 0), 1); near(v('camai', 45), 1); near(v('camai', -45), 1);
+  near(v('camai', 57.5), 0.5); near(v('camai', 70), 0); near(v('camai', 180), 0);
+  near(v('glasses', 0), 0); near(v('glasses', 20), 0); near(v('glasses', 32.5), 0.5);
+  near(v('glasses', 45), 1); near(v('glasses', 90), 1); near(v('glasses', 105), 0.5);
+  near(v('glasses', 120), 0); near(v('glasses', -60), 1); near(v('glasses', 180), 0);
+  near(v('earbud', 0), 0); near(v('earbud', 10), 0); near(v('earbud', 20), 0.5);
+  near(v('earbud', 30), 1); near(v('earbud', 90), 1); near(v('earbud', 180), 1);
+  near(v('earbud', -150), 0.6); near(v('earbud', -90), 0);
 });
