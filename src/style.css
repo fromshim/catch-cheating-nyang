@@ -152,12 +152,12 @@ button { font: inherit; color: inherit; cursor: pointer; }
 /* 철판 카드: 브러시드 메탈 바탕 + 모서리 나사 + 음각 글씨 */
 .start .plate { position: relative; width: 340px; padding: 12px 22px 14px; text-align: center; color: #2b3036; text-shadow: 0 1px 0 #ffffffb0;
   background: radial-gradient(circle at 10px 10px, #e8ebee 0 1px, #6b727a 3px, transparent 3.5px), radial-gradient(circle at calc(100% - 10px) 10px, #e8ebee 0 1px, #6b727a 3px, transparent 3.5px), radial-gradient(circle at 10px calc(100% - 10px), #e8ebee 0 1px, #6b727a 3px, transparent 3.5px), radial-gradient(circle at calc(100% - 10px) calc(100% - 10px), #e8ebee 0 1px, #6b727a 3px, transparent 3.5px),
-    repeating-linear-gradient(90deg, #ffffff12 0 1px, #00000008 1px 3px), linear-gradient(160deg, #c9ced3, #9aa1a8 55%, #b7bcc2);
+    repeating-linear-gradient(90deg, #ffffff0a 0 1px, #00000005 1px 3px), linear-gradient(160deg, #c9ced3, #9aa1a8 55%, #b7bcc2);
   border-radius: 4px; box-shadow: 0 6px 14px #0007; transform: rotate(-1.5deg); }
 .start .arr + .plate { transform: rotate(1.2deg); }
-.start .plate small { display: block; font-size: 12px; font-weight: 700; letter-spacing: 3px; color: #4a5159; }
-.start .plate b { display: block; margin: 4px 0 2px; font-size: 21px; }
-.start .plate span { display: block; font-size: 13.5px; color: #3b4148; }
+.start .plate small { display: block; font-size: 12px; font-weight: 800; letter-spacing: 3px; color: #4a5159; }
+.start .plate b { display: block; margin: 4px 0 2px; font-size: 22px; font-weight: 900; }
+.start .plate span { display: block; font-size: 14px; font-weight: 700; color: #2f353b; }
 .start .who { display: flex; gap: 12px; align-items: stretch; }
 .start .who figure { margin: 0; width: 188px; padding: 4px 10px 10px; background: #0006; border-radius: 6px; }
 .start .who figure svg { margin: 0 auto; }
@@ -171,7 +171,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .start .hk-l { text-align: left; }
 .start .hk-l.r { text-align: right; }
 .start .cta { position: absolute; bottom: 42px; left: 0; right: 0; margin: 0; font-size: 18px; }
-.start .co { position: absolute; left: 40px; bottom: 44px; margin: 0; font-size: 14px; color: var(--mute); }
+.start .co { margin: 2px 0 10px; font-size: 15px; font-weight: 600; text-align: center; }
 .start .co b { background: #f0a020; color: #1b1608; padding: 0 6px; border-radius: 3px; margin-right: 6px; }
 
 /* 일시정지 도감: 섹션을 상자로 감싸지 않고 여백으로 나눈다 */

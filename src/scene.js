@@ -264,7 +264,7 @@ export function createPerson(rand, { color, proctor = false } = {}) {
   const fr = box(0.25, 0.012, 0.012, frameMat); fr.position.set(0, 0.067, -0.2); glasses.add(fr);
   const br = box(0.03, 0.012, 0.012, frameMat); br.position.set(0, 0.03, -0.2); glasses.add(br);
   const lensMat = new THREE.MeshBasicMaterial({ color: 0xaac4d4, transparent: true, opacity: 0.25, depthWrite: false, side: THREE.DoubleSide });
-  const additive = (c, map) => new THREE.MeshBasicMaterial({ color: c, map, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false });
+  const additive = (c, map) => new THREE.MeshBasicMaterial({ color: c, ...(map && { map }), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false });
   const lensGlowMat = additive(0x6fdc95), buttonGlowMat = additive(0xff5a3c, haloTex()), earGlowMat = additive(0x5aa8ff, haloTex());
   const lensGlow = [], lensGlowGeo = new THREE.PlaneGeometry(0.06, 0.042); // 렌즈의 60%, 아래쪽으로 치우침
   for (const lx of [-0.07, 0.07]) {
@@ -508,7 +508,7 @@ export function renderDeviceCards(size = [620, 552]) {
   const M = (c, extra) => { const m = mat(c, extra); own.push(m); return m; };
   const B = (w, h, d, m, x = 0, y = 0, z = 0, parent = scene) => { const o = box(w, h, d, m); o.position.set(x, y, z); parent.add(o); own.push(o.geometry); return o; };
   const G = (geo, m, x, y, z, parent) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); parent.add(o); own.push(geo); return o; };
-  const glow = (c, map, op) => { const m = new THREE.MeshBasicMaterial({ color: c, map, transparent: true, opacity: op, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false }); own.push(m); return m; };
+  const glow = (c, map, op) => { const m = new THREE.MeshBasicMaterial({ color: c, ...(map && { map }), transparent: true, opacity: op, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false }); own.push(m); return m; };
   const shot = (cam) => { r.render(scene, cam); return r.domElement.toDataURL('image/png'); };
   const out = {};
 

@@ -102,8 +102,9 @@ export function startProctor({ renderer, ui, onEnd }) {
     ov.hidden = false; ui.querySelector('.hud').classList.add('cover');
     ov.innerHTML = `<div class="panel start"><div class="clues">${G.clues.map((c, k) => `${k ? '<i class="arr">→</i>' : ''}<div class="plate"><small>${c.h}</small><b>${c.t}</b><span>${c.d}</span></div>`).join('')}</div>
       <div class="who">${G.who.map((w, k) => `${k === 3 ? '<div class="sep"></div>' : ''}<figure class="${w.no ? 'no' : ''}">${bust({ ...w.o, w: 124 })}<em>${w.tag}</em><b>${w.t}</b><span>${w.d}</span></figure>`).join('')}</div>
+      <p class="co"><b>[!]</b>${G.co}</p>
       <div class="kwrap" style="--hk-scale:${Math.max(0.5, sc)}">${kbd(G.keys)}</div>
-      <p class="co"><b>[!]</b>${G.co}</p><p class="cta">${P.clickStart}</p></div>`;
+      <p class="cta">${P.clickStart}</p></div>`;
   };
   showStart();
   ov.onclick = () => { audio.init(); audio.hum(true); controls.lock(); };
