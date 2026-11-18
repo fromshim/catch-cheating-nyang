@@ -1,0 +1,50 @@
+/* 메뉴·엔딩: 3D 는 관공서 형광등, UI 는 공문서·수험표 종이. style.css 를 덮어쓴다. */
+:root { --paper: #F4F1E6; --ink: #1B1F24; --seal: #D7302A; --jade: #9DB8A8; --serif: 'AppleMyungjo', 'Nanum Myeongjo', 'Batang', serif; }
+.screen { justify-content: safe center; word-break: keep-all; background: rgba(20, 22, 22, 0.55); backdrop-filter: saturate(0.5) brightness(0.8); }
+
+/* 메뉴 */
+.rec { position: absolute; top: 16px; left: 20px; font: 600 15px ui-monospace, Menlo, monospace; color: #fff; letter-spacing: 0.05em; text-shadow: 0 1px 3px #000; }
+.rec i { display: inline-block; width: 10px; height: 10px; margin-right: 6px; border-radius: 50%; background: var(--seal); animation: blink 1.2s steps(2) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+.ticket { position: relative; width: min(640px, 100%); background: var(--paper); color: var(--ink); border: 2px solid var(--ink); outline: 1px solid var(--ink); outline-offset: -8px; padding: 28px 36px 24px; box-shadow: 0 10px 40px #0008; }
+.ticket h5 { margin: 0; font: 700 18px var(--serif); letter-spacing: 0.6em; padding-left: 0.6em; text-align: center; border-bottom: 1px solid var(--ink); padding-bottom: 10px; }
+.ticket .org { margin: 14px 0 0; font-size: 14px; text-align: left; }
+.ticket h1 { font: 800 72px/1.1 var(--serif); letter-spacing: 0.3em; padding-left: 0.3em; margin: 4px 0 0; }
+.ticket .sub { color: var(--ink); opacity: 0.75; margin: 4px 0 22px; font-size: 14px; }
+.seal { position: absolute; top: 56px; right: 30px; width: 74px; height: 74px; border: 3px solid var(--seal); border-radius: 50%; color: var(--seal); display: flex; align-items: center; justify-content: center; text-align: center; font: 700 14px/1.2 var(--serif); transform: rotate(-12deg); opacity: 0.85; padding: 6px; }
+.ticket .modes { gap: 14px; }
+.ticket .modes button { flex: 1; width: auto; background: transparent; color: var(--ink); border: 1px solid var(--ink); border-radius: 0; padding: 14px; text-align: left; gap: 4px; }
+.ticket .modes button:hover { background: var(--jade); }
+.ticket .modes small { font-size: 13px; opacity: 0.7; }
+.ticket .modes b { font: 700 24px var(--serif); }
+.ticket .modes span { color: var(--ink); font-size: 13px; }
+.ticket .notice { position: static; margin: 18px 0 0; color: var(--ink); opacity: 0.7; font-size: 13px; text-align: left; }
+
+/* 엔딩 */
+.end > * { max-width: 1040px; }
+.end-wrap { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 28px; width: 100%; align-items: start; }
+.end .memo { background: var(--paper); color: var(--ink); border: 2px solid var(--ink); padding: 24px 28px; box-shadow: 0 8px 30px #0008; }
+.end .memo h5 { margin: 0 0 14px; font: 700 18px var(--serif); letter-spacing: 0.8em; padding-left: 0.8em; text-align: center; border-bottom: 1px solid var(--ink); padding-bottom: 10px; }
+.end .memo h2 { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; font: 800 32px/1.3 var(--serif); margin: 0 0 12px; }
+.stamp { flex: none; border: 3px solid var(--seal); color: var(--seal); padding: 2px 10px; font: 800 20px var(--serif); transform: rotate(-8deg); opacity: 0.85; white-space: nowrap; }
+.end .memo h3 { color: var(--seal); font-family: var(--serif); margin: 16px 0 0; }
+.end .memo p { text-align: left; }
+.grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--ink); border: 1px solid var(--ink); margin: 18px 0 10px; }
+.grid div { background: var(--paper); padding: 8px 12px; }
+.grid small { display: block; font-size: 12px; opacity: 0.7; }
+.grid b { font: 700 28px var(--serif); font-variant-numeric: tabular-nums; }
+.more p { font-size: 13px; margin: 4px 0; line-height: 1.5; opacity: 0.85; }
+.end .reality { background: var(--paper); color: var(--ink); border-radius: 0; padding: 22px 24px; margin: 8px 0 0; transform: rotate(-1.5deg); box-shadow: 0 8px 30px #000a; font-family: var(--serif); text-align: left; }
+.end .reality h4 { display: inline-block; margin: 0 0 12px; padding: 1px 8px; background: var(--ink); color: var(--paper); font: 700 13px var(--serif); letter-spacing: 0.1em; }
+.end .reality p { font-size: 16px; line-height: 1.7; margin: 0 0 12px; }
+.end .reality small { display: block; color: var(--ink); opacity: 0.7; font-size: 13px; border-top: 1px solid var(--ink); padding-top: 8px; }
+.end .news { max-width: 1040px; margin-bottom: 16px; }
+.end .btns { justify-content: center; }
+.end .btns button { background: var(--paper); color: var(--ink); border: 2px solid var(--ink); border-radius: 0; font-weight: 700; }
+.end .btns button:hover { background: var(--jade); }
+@media (max-width: 760px) {
+  .end-wrap { grid-template-columns: 1fr; }
+  .ticket h1 { font-size: 52px; }
+  .ticket .modes { flex-direction: column; }
+  .seal { top: 52px; right: 16px; width: 60px; height: 60px; font-size: 12px; }
+}
