@@ -61,6 +61,7 @@
 .hk-t-move { left: 0; top: 35%; width: 50%; bottom: 0; }
 .hk-t-base { display: none; position: absolute; width: 110px; height: 110px; margin: -55px 0 0 -55px; border-radius: 50%; background: rgba(27,31,36,.4); border: 2px solid rgba(244,241,230,.45); pointer-events: none; }
 .hk-t-knob { position: absolute; left: 33px; top: 33px; width: 44px; height: 44px; border-radius: 50%; background: rgba(244,241,230,.75); }
+.hk-t-home { display: none; }
 .hk-t-btn { position: absolute; pointer-events: auto; width: 68px; height: 68px; border-radius: 50%; display: flex; align-items: center; justify-content: center; text-align: center; background: rgba(27,31,36,.62); border: 2px solid rgba(244,241,230,.5); color: #F4F1E6; font-weight: 800; font-size: 15px; line-height: 1.1; font-family: inherit; transition: transform .06s, background .06s; }
 .hk-t-small { width: 52px; height: 52px; font-size: 13px; }
 .hk-t-btn.on { transform: scale(.92); background: rgba(244,241,230,.88); color: #1B1F24; }
@@ -70,6 +71,10 @@
 body.pdeck .hk-t-deck { display: block; position: absolute; left: 0; right: 0; bottom: 0; height: var(--deck); background: rgba(20,17,13,.78); border-top: 2px solid rgba(244,241,230,.3); pointer-events: none; }
 body.pdeck .hk-t-look { left: 0; bottom: var(--deck); }
 body.pdeck .hk-t-move { top: auto; height: var(--deck); }
+/* 조이스틱 기본 자리: 덱 왼쪽 가운데에 흐리게. 누르면 누른 자리에 진짜 조이스틱이 뜨고 이건 숨는다 */
+body.pdeck .hk-t-home { display: block; position: absolute; left: 50%; top: 50%; width: 110px; height: 110px; margin: -55px 0 0 -55px; border-radius: 50%; border: 2px dashed rgba(244,241,230,.35); pointer-events: none; }
+body.pdeck .hk-t-home .hk-t-knob { background: rgba(244,241,230,.3); }
+body.pdeck .hk-t-move.act .hk-t-home { display: none; }
 body.pdeck .hk-t-btn[data-id=inspect] { width: 104px; height: 104px; font-size: 20px; right: 96px !important; bottom: 40px !important; }
 body.pdeck .hk-t-btn[data-id=arrest] { width: 74px; height: 74px; right: 14px !important; bottom: 128px !important; }
 body.pdeck .hk-t-btn[data-id=emp] { width: 62px; height: 62px; right: 22px !important; bottom: 40px !important; }

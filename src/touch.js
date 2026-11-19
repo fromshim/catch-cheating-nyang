@@ -48,15 +48,16 @@ export function mountTouch(root, { camera, buttons = [], onLook, onTap } = {}) {
 
   // 이동: 왼쪽 아래, 떠다니는 조이스틱
   const moveZone = div('hk-t-zone hk-t-move'), base = div('hk-t-base'), knob = div('hk-t-knob', base);
+  div('hk-t-knob', div('hk-t-home', moveZone)); // 세로 덱에서 안 만질 때 보이는 조이스틱 기본 자리(CSS)
   let mid = null, ox = 0, oy = 0;
   const release = (e) => {
     if (e.pointerId !== mid) return;
-    mid = null; base.style.display = 'none';
+    mid = null; base.style.display = 'none'; moveZone.classList.remove('act');
     ['KeyW', 'KeyA', 'KeyS', 'KeyD'].forEach((c) => key(c, false));
   };
   on(moveZone, 'pointerdown', (e) => {
     if (mid !== null) return;
-    mid = e.pointerId; moveZone.setPointerCapture(mid); ox = e.clientX; oy = e.clientY;
+    mid = e.pointerId; moveZone.setPointerCapture(mid); ox = e.clientX; oy = e.clientY; moveZone.classList.add('act');
     const r = el.getBoundingClientRect();
     Object.assign(base.style, { display: 'block', left: ox - r.left + 'px', top: oy - r.top + 'px' });
     knob.style.transform = '';

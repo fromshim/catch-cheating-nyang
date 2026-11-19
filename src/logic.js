@@ -127,7 +127,7 @@ export const TUNE = {
   stressProximityRate: 5,
   proximityDist: 1.5,
   stressEmpCheater: 20, stressEmpInnocent: 5,
-  stressDecay: 0.8,
+  stressDecay: 0.5,
   meltdownAt: 100,
   // 교실 경계도(heat) 0~100
   heatInspect: 25, heatArrest: 30, heatEmp: 60, heatDecay: 1.0,
@@ -177,7 +177,7 @@ const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 export function stressStep(stress, { proctorDist, dt }) {
   // 가까울수록 빨리 오른다: 반경 끝에서 1배, 바로 옆에서 2배
   const up = proctorDist <= TUNE.proximityDist ? TUNE.stressProximityRate * (2 - proctorDist / TUNE.proximityDist) : 0;
-  return clamp(stress + (up - TUNE.stressDecay) * dt, 0, 100);
+  return clamp(stress + (up || -TUNE.stressDecay) * dt, 0, 100); // 곁에 있으면 오르기만, 멀어지면 천천히 내린다
 }
 
 export function stressLevel(stress) {
