@@ -65,6 +65,14 @@
 .hk-t-small { width: 52px; height: 52px; font-size: 13px; }
 .hk-t-btn.on { transform: scale(.92); background: rgba(244,241,230,.88); color: #1B1F24; }
 .hk-t-btn.off { opacity: .4; }
+/* 세로 화면(proctor.js 가 body.pdeck 와 --deck 을 맞춘다): 아래 덱에 조이스틱·버튼을 모은다 */
+.hk-t-deck { display: none; }
+body.pdeck .hk-t-deck { display: block; position: absolute; left: 0; right: 0; bottom: 0; height: var(--deck); background: rgba(20,17,13,.78); border-top: 2px solid rgba(244,241,230,.3); pointer-events: none; }
+body.pdeck .hk-t-look { left: 0; bottom: var(--deck); }
+body.pdeck .hk-t-move { top: auto; height: var(--deck); }
+body.pdeck .hk-t-btn[data-id=inspect] { width: 104px; height: 104px; font-size: 20px; right: 96px !important; bottom: 40px !important; }
+body.pdeck .hk-t-btn[data-id=arrest] { width: 74px; height: 74px; right: 14px !important; bottom: 128px !important; }
+body.pdeck .hk-t-btn[data-id=emp] { width: 62px; height: 62px; right: 22px !important; bottom: 40px !important; }
 .hk-t-badge { position: absolute; right: -4px; top: -4px; min-width: 22px; padding: 1px 5px; border-radius: 11px; background: #F4F1E6; color: #1B1F24; font-size: 12px; font-weight: 800; }
 .hk-t-badge:empty { display: none; }
 

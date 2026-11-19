@@ -7,7 +7,7 @@ import { startProctor } from './proctor.js';
 import { startExaminee } from './examinee.js';
 
 const ui = document.getElementById('ui');
-// 터치 기기 세로 화면 안내. 보임·숨김은 style.css 의 미디어 쿼리가 맡는다
+// 가로 전용 안내(수험생 모드만). body.need-landscape 일 때만 style.css 가 보여 준다
 document.body.insertAdjacentHTML('beforeend', `<div id="rotate"><i></i><p>${C.rotate}</p></div>`);
 const renderer = makeRenderer(document.getElementById('c'));
 let mode = null;

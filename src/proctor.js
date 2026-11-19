@@ -32,7 +32,27 @@ export function startProctor({ renderer, ui, onEnd }) {
   camera.position.set(0, 1.65, ROOM.zMin + 1.5);
   camera.lookAt(0, 1.1, 0);
   const controls = new PointerLockControls(camera, renderer.domElement);
-  const stopResize = autoResize(renderer, camera);
+  // 세로 터치: 아래 36% 를 덱으로 쓰고, 투영 중심을 덱 위 영역 가운데로 올린다.
+  // 전체 프러스텀을 W×(H+D) 로 보고 아래쪽 H 만 그리면(setViewOffset) 정면이 y=(H-D)/2 에 온다.
+  // 가로가 70도가 되도록 세로 fov 를 키운다(상한 130: 덱이 가리는 아래쪽이 늘어나는 값).
+  const portrait = matchMedia('(orientation: portrait)');
+  const layout = (w, h) => {
+    const deck = isTouch && portrait.matches;
+    document.body.classList.toggle('pdeck', deck);
+    if (deck) {
+      const D = Math.round(h * 0.36);
+      document.body.style.setProperty('--deck', D + 'px');
+      camera.aspect = w / (h + D);
+      camera.fov = Math.min(130, 2 * Math.atan(Math.tan(35 * Math.PI / 180) * (h + D) / w) * 180 / Math.PI);
+      camera.setViewOffset(w, h + D, 0, D, w, h);
+    } else {
+      document.body.style.removeProperty('--deck');
+      camera.aspect = w / h; camera.fov = 70; camera.clearViewOffset();
+    }
+    camera.updateProjectionMatrix();
+  };
+  const stopResize = autoResize(renderer, camera, layout);
+  layout(visualViewport?.width || innerWidth, visualViewport?.height || innerHeight);
 
   const people = seatExaminees(scene, seed);
   // 뒤에 선 부감독관 NPC: 교실 뒤를 가로로 오가며 학생들 등을 본다
@@ -73,6 +93,7 @@ export function startProctor({ renderer, ui, onEnd }) {
     setRun(false);
   };
   let touch = null; // 터치 기기의 가상 조작. setRun 이 보임을 관리한다
+  let aimAnim = null; // 탭 조준: 카메라가 학생 쪽으로 도는 0.25초 보간 { from, to, k }
 
   // HUD
   ui.innerHTML = `
@@ -114,7 +135,7 @@ export function startProctor({ renderer, ui, onEnd }) {
   };
   showStart();
   if (isTouch) {
-    touch = mountTouch(ui.querySelector('.hud'), { camera, buttons: [
+    touch = mountTouch(ui.querySelector('.hud'), { camera, onLook: () => { aimAnim = null; }, onTap: tapAim, buttons: [
       { id: 'inspect', label: P.mini.e, code: 'KeyE', hold: true },
       { id: 'arrest', label: P.mini.f, code: 'KeyF' },
       { id: 'emp', label: P.mini.q, code: 'KeyQ' },
@@ -134,10 +155,6 @@ export function startProctor({ renderer, ui, onEnd }) {
     if (!v) audio.whisper(0);
     if (!v && !ended) showPause();
   };
-  // 게임 중 폰을 세로로 돌리면 입력이 막히니 시간도 멈춘다
-  const portrait = matchMedia('(orientation: portrait)');
-  const onRotate = (ev) => { if (isTouch && ev.matches && running && !ended) setRun(false); };
-  portrait.addEventListener('change', onRotate);
   // 확대 모델 창: on·off 두 장을 겹쳐 위 장을 깜빡인다. 부품 이름과 리더 라인은 SVG 층(좌표는 anchors 비율)
   const deviceWin = (d, c) => {
     const imgs = deviceCards?.[d], anc = renderDeviceCards.anchors?.[d], W = 232, H = 206;
@@ -227,6 +244,22 @@ export function startProctor({ renderer, ui, onEnd }) {
   // 화면 중앙에 가장 가깝게 걸린 수험생(거리 maxDist 안)
   // 검사·적발 대상은 조준 라벨이 가리키는 바로 그 학생이고, 2m 안이어야 한다
   const reach = () => { const a = aimed(8); return a && a.pos.distanceTo(camera.position) <= 2 ? a : null; };
+  // 화면을 짧게 탭하면 탭 지점에서 60px 안의 가장 가까운 학생(몸통 높이)을 향해 카메라를 돌린다
+  const tapQ = new THREE.Quaternion(), tapM = new THREE.Matrix4(), UP = new THREE.Vector3(0, 1, 0);
+  function tapAim(x, y) {
+    if (!running || ended) return;
+    let best = null, bestD = 60;
+    for (const e of ex) {
+      if (e.removed) continue;
+      v.copy(e.pos).project(camera);
+      if (v.z > 1) continue;
+      const d = Math.hypot((v.x + 1) / 2 * innerWidth - x, (1 - v.y) / 2 * innerHeight - y);
+      if (d < bestD) { bestD = d; best = e; }
+    }
+    if (!best) return;
+    tapQ.setFromRotationMatrix(tapM.lookAt(camera.position, best.pos, UP));
+    aimAnim = { from: camera.quaternion.clone(), to: tapQ.clone(), k: 0 };
+  }
   function aimed(maxDist) {
     camera.getWorldDirection(dir);
     let best = null, bestR = 1;
@@ -483,6 +516,12 @@ export function startProctor({ renderer, ui, onEnd }) {
     camera.position.x = Math.max(-ROOM.x + 0.4, Math.min(ROOM.x - 0.4, camera.position.x));
     camera.position.z = Math.max(ROOM.zMin + 0.4, Math.min(ROOM.zMax - 0.4, camera.position.z));
     camera.position.y = 1.65;
+    if (aimAnim) {
+      aimAnim.k = Math.min(1, aimAnim.k + dt / 0.25);
+      const k = aimAnim.k * (2 - aimAnim.k); // ease-out
+      camera.quaternion.slerpQuaternions(aimAnim.from, aimAnim.to, k);
+      if (aimAnim.k >= 1) aimAnim = null;
+    }
     // 학생 몸은 통과 못 한다(책상은 통과 가능)
     for (const e of ex) {
       if (e.removed) continue;
@@ -633,7 +672,7 @@ export function startProctor({ renderer, ui, onEnd }) {
     stop() {
       cancelAnimationFrame(raf); clearTimeout(overTimer); ended = true; audio.stopAll();
       stopResize(); if (document.pointerLockElement) controls.unlock(); controls.dispose(); touch?.dispose();
-      portrait.removeEventListener('change', onRotate);
+      document.body.classList.remove('pdeck'); document.body.style.removeProperty('--deck');
       removeEventListener('keydown', kd); removeEventListener('keyup', ku);
       document.removeEventListener('pointerlockerror', onLockErr);
       ui.innerHTML = '';
