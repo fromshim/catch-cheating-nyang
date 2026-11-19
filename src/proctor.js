@@ -440,7 +440,7 @@ export function startProctor({ renderer, ui, onEnd }) {
   function finish() {
     ended = true; running = false;
     audio.stopAll();
-    controls.unlock();
+    if (document.pointerLockElement) controls.unlock(); // iOS Safari 에는 포인터 잠금이 없어 그냥 부르면 에러로 엔딩이 안 뜬다
     // 증거 없이 잡은 범인은 시험 후 석방될 수 있다
     const { released } = releaseNoEvidence(
       ex.filter((e) => state.caught.includes(e.id)).map((e) => ({ id: e.id, evidence: evidenceOf(e) })), rand);
@@ -630,7 +630,7 @@ export function startProctor({ renderer, ui, onEnd }) {
   return {
     stop() {
       cancelAnimationFrame(raf); clearTimeout(overTimer); ended = true; audio.stopAll();
-      stopResize(); controls.unlock(); controls.dispose(); touch?.dispose();
+      stopResize(); if (document.pointerLockElement) controls.unlock(); controls.dispose(); touch?.dispose();
       portrait.removeEventListener('change', onRotate);
       removeEventListener('keydown', kd); removeEventListener('keyup', ku);
       document.removeEventListener('pointerlockerror', onLockErr);

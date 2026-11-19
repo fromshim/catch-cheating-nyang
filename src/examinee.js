@@ -106,7 +106,7 @@ export function startExaminee({ renderer, ui, onEnd }) {
   addEventListener('keydown', down); addEventListener('keyup', up);
 
   function finish(id) {
-    ended = true; running = false; audio.stopAll(); controls.unlock();
+    ended = true; running = false; audio.stopAll(); if (document.pointerLockElement) controls.unlock(); // iOS Safari 에는 포인터 잠금이 없다
     const d = E.devices[dev];
     onEnd({
       ending: { ...E.endings[id], id }, 
@@ -173,7 +173,7 @@ export function startExaminee({ renderer, ui, onEnd }) {
   return {
     stop() {
       cancelAnimationFrame(raf); ended = true; audio.stopAll(); stopResize();
-      controls.unlock(); controls.dispose(); touch?.dispose();
+      if (document.pointerLockElement) controls.unlock(); controls.dispose(); touch?.dispose();
       portrait.removeEventListener('change', onRotate);
       removeEventListener('keydown', down); removeEventListener('keyup', up);
       document.removeEventListener('pointerlockerror', onLockErr);
