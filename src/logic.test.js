@@ -117,8 +117,8 @@ test('innocentTellMul', () => {
 
 test('parentRisk 가중치와 클램프', () => {
   assert.equal(parentRisk({ emptyInspects: 0, meltdowns: 0, wrongArrests: 0 }), 0);
-  assert.equal(parentRisk({ emptyInspects: 1, meltdowns: 1, wrongArrests: 1 }), 68);
-  assert.equal(parentRisk({ emptyInspects: 0, meltdowns: 0, wrongArrests: 3 }), 100); // 40*3=120 -> 100
+  assert.equal(parentRisk({ emptyInspects: 1, meltdowns: 1, wrongArrests: 1 }), 85);
+  assert.equal(parentRisk({ emptyInspects: 0, meltdowns: 0, wrongArrests: 2 }), 100); // 오적발 두 번이면 교체
   assert.equal(parentRisk({ emptyInspects: 10, meltdowns: 10, wrongArrests: 10 }), 100);
 });
 
@@ -170,17 +170,17 @@ test('DEVICES·INSPECT_PROB 는 2종', () => {
 });
 
 test('inspectChance 목격 보너스와 상한', () => {
-  near(inspectChance('set', 0), 0.75);
-  near(inspectChance('set', 4), 0.75);
-  near(inspectChance('set', 4.01), 0.35);
-  near(inspectChance('set', Infinity), 0.35);
-  near(inspectChance('set', 1), 0.75);
-  near(inspectChance('glasses', 1), 0.55);
+  near(inspectChance('set', 0), 0.9);
+  near(inspectChance('set', 4), 0.9);
+  near(inspectChance('set', 4.01), 0.5);
+  near(inspectChance('set', Infinity), 0.5);
+  near(inspectChance('glasses', Infinity), 0.55);
+  near(inspectChance('glasses', 1), 0.95); // 상한
   assert.ok(inspectChance('set', 0) <= 0.95);
-  assert.equal(inspectFound('set', 0.74, 0), true);
-  assert.equal(inspectFound('set', 0.75, 0), false);
-  assert.equal(inspectFound('set', 0.34), true);
-  assert.equal(inspectFound('set', 0.35), false);
+  assert.equal(inspectFound('set', 0.89, 0), true);
+  assert.equal(inspectFound('set', 0.9, 0), false);
+  assert.equal(inspectFound('set', 0.49), true);
+  assert.equal(inspectFound('set', 0.5), false);
 });
 
 test('signalVisibility 경계값', () => {

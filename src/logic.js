@@ -15,7 +15,7 @@ export function mulberry32(seed) {
 export const DEVICES = ['set', 'glasses'];
 
 // 소지품 검사에서 기기를 발견할 확률
-export const INSPECT_PROB = { set: 0.35, glasses: 0.15 };
+export const INSPECT_PROB = { set: 0.5, glasses: 0.55 }; // 기본 발견 확률(나머지는 발뺌). 안경은 쓰고 있으니 뒤지면 더 잘 나온다
 // 신호를 목격한 직후(redHandedWindow 초 이내) 검사를 시작하면 발견 확률 가산. sinceSighting: 마지막 목격 후 경과 초(없으면 Infinity)
 export const inspectChance = (device, sinceSighting) => {
   const base = INSPECT_PROB[device] ?? 0;
@@ -147,7 +147,7 @@ export const TUNE = {
   // 범인 부정행위 진척
   cheatBaseRate: 100 / 120,
   // 학부모 리스크 가중치
-  riskEmptyInspect: 8, riskMeltdown: 20, riskWrongArrest: 40,
+  riskEmptyInspect: 15, riskMeltdown: 20, riskWrongArrest: 50,
   riskSafeBelow: 15, // 이 미만이면 고소 판정 없음
   riskGameOver: 100, // 리스크가 이 값에 닿으면 즉시 시험 중단
   // 부감독관(NPC) 목격 판정
