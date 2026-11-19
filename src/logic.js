@@ -15,13 +15,16 @@ export function mulberry32(seed) {
 export const DEVICES = ['set', 'glasses'];
 
 // 소지품 검사에서 기기를 발견할 확률
-export const INSPECT_PROB = { set: 0.5, glasses: 0.55 }; // 기본 발견 확률(나머지는 발뺌). 안경은 쓰고 있으니 뒤지면 더 잘 나온다
-// 신호를 목격한 직후(redHandedWindow 초 이내) 검사를 시작하면 발견 확률 가산. sinceSighting: 마지막 목격 후 경과 초(없으면 Infinity)
-export const inspectChance = (device, sinceSighting) => {
-  const base = INSPECT_PROB[device] ?? 0;
-  return sinceSighting <= TUNE.redHandedWindow ? Math.min(0.95, base + TUNE.redHandedBonus) : base;
+export const INSPECT_PROB = { set: 0.2, glasses: 0.2 }; // 목격 없이 뒤질 때 발견 확률(나머지는 발뺌)
+// 발견 확률: 빛을 본 직후(redHandedWindow 초 이내) > 목격 2회 이상 > 목격 1회 > 목격 없음.
+// sinceSighting: 마지막 목격 후 경과 초(없으면 Infinity), seen: 이 학생을 목격한 횟수
+export const inspectChance = (device, sinceSighting, seen = 0) => {
+  if (sinceSighting <= TUNE.redHandedWindow) return TUNE.redHandedChance;
+  if (seen >= 2) return TUNE.inspectSeen[1];
+  if (seen >= 1) return TUNE.inspectSeen[0];
+  return INSPECT_PROB[device] ?? 0;
 };
-export const inspectFound = (device, roll, sinceSighting = Infinity) => roll < inspectChance(device, sinceSighting);
+export const inspectFound = (device, roll, sinceSighting = Infinity, seen = 0) => roll < inspectChance(device, sinceSighting, seen);
 
 const lerp = (v, a, b) => clamp((v - a) / (b - a), 0, 1);
 
@@ -115,13 +118,13 @@ export function evaluateEnding(state) {
 }
 
 export const TUNE = {
-  inspectCooldown: 5, // 검사(E) 쿨타임 초
+  inspectCooldown: 4, // 검사(E) 쿨타임 초
   inspectHold: 1.2, // E 홀드 검사 시간 초
   // 개인 긴장(stress) 0~100
   stressEmptyInspect: 35,
   stressNeighbor: 10,
   neighborDist: 2.4,
-  stressProximityRate: 3,
+  stressProximityRate: 5,
   proximityDist: 1.5,
   stressEmpCheater: 20, stressEmpInnocent: 5,
   stressDecay: 0.8,
@@ -129,12 +132,13 @@ export const TUNE = {
   // 교실 경계도(heat) 0~100
   heatInspect: 25, heatArrest: 30, heatEmp: 60, heatDecay: 1.0,
   calmBelow: 20,
-  boldAfter: 15,
+  boldAfter: 20,
   boldRamp: 20,
   boldMax: 1.6, // 대담 배율 상한
-  proximityDwell: 3, // 근접 긴장은 이 시간(초) 이상 머문 뒤부터 (판정은 proctor)
+  proximityDwell: 1, // 근접 긴장은 이 시간(초) 이상 머문 뒤부터 (판정은 proctor). 지나가기만 해도 조금 오른다
   empRadius: 4,
-  redHandedWindow: 4, redHandedBonus: 0.4, // 신호 목격 후 4초 안에 검사하면 발견 확률 +0.4(최대 0.95)
+  redHandedWindow: 3, redHandedChance: 0.9, // 신호 목격 후 3초 안에 검사하면 발견 확률 90%
+  inspectSeen: [0.55, 0.75], // 목격 1회, 2회 이상일 때 발견 확률
   doneTellMul: 1 / 3, // 베끼기를 끝낸 범인의 신호 빈도 배율
   sightDist: 5, glowDist: 7, // 일지 기록 최대 거리, 발광이 보이는 최대 거리
   signalDur: { camai: 3, earbud: 3.5, glasses: 4 }, // 발광 kind 별 신호 지속 초

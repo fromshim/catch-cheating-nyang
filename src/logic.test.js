@@ -75,7 +75,7 @@ const near = (a, b) => assert.ok(Math.abs(a - b) < 1e-9, `${a} != ${b}`);
 
 test('stressStep 감쇠·근접 가산·클램프', () => {
   near(stressStep(50, { proctorDist: 5, dt: 1 }), 49.2);
-  near(stressStep(50, { proctorDist: 1.5, dt: 1 }), 52.2);
+  near(stressStep(50, { proctorDist: 1.5, dt: 1 }), 54.2);
   near(stressStep(50, { proctorDist: 1.6, dt: 1 }), 49.2);
   assert.equal(stressStep(0.5, { proctorDist: 5, dt: 1 }), 0);
   assert.equal(stressStep(99.5, { proctorDist: 0, dt: 1 }), 100);
@@ -102,9 +102,9 @@ test('cheaterMul heat 구간과 대담 구간', () => {
   near(cheaterMul(25, 0).progress, 0.7);
   near(cheaterMul(50, 0).tell, 0.4);
   near(cheaterMul(80, 0).progress, 0.4);
-    near(cheaterMul(0, 15).tell, 1); // 경계: 초과해야 대담
-  near(cheaterMul(0, 25).tell, 1.3);
-  near(cheaterMul(0, 35).progress, 1.6);
+  near(cheaterMul(0, 20).tell, 1); // 경계: boldAfter(20초)를 넘어야 대담
+  near(cheaterMul(0, 30).tell, 1.3);
+  near(cheaterMul(0, 40).progress, 1.6);
   near(cheaterMul(0, 200).tell, 1.6);
 });
 
@@ -169,18 +169,19 @@ test('DEVICES·INSPECT_PROB 는 2종', () => {
   assert.equal(TUNE.co.markDur, 3);
 });
 
-test('inspectChance 목격 보너스와 상한', () => {
-  near(inspectChance('set', 0), 0.9);
-  near(inspectChance('set', 4), 0.9);
-  near(inspectChance('set', 4.01), 0.5);
-  near(inspectChance('set', Infinity), 0.5);
-  near(inspectChance('glasses', Infinity), 0.55);
-  near(inspectChance('glasses', 1), 0.95); // 상한
-  assert.ok(inspectChance('set', 0) <= 0.95);
-  assert.equal(inspectFound('set', 0.89, 0), true);
-  assert.equal(inspectFound('set', 0.9, 0), false);
-  assert.equal(inspectFound('set', 0.49), true);
-  assert.equal(inspectFound('set', 0.5), false);
+test('inspectChance 목격 횟수·직후 단계', () => {
+  near(inspectChance('set', Infinity), 0.2);
+  near(inspectChance('glasses', Infinity, 0), 0.2);
+  near(inspectChance('set', Infinity, 1), 0.55);
+  near(inspectChance('set', 10, 2), 0.75);
+  near(inspectChance('glasses', 10, 5), 0.75);
+  near(inspectChance('set', 3, 1), 0.9);
+  near(inspectChance('set', 3.01, 1), 0.55);
+  near(inspectChance('glasses', 0, 0), 0.9);
+  assert.equal(inspectFound('set', 0.89, 0, 1), true);
+  assert.equal(inspectFound('set', 0.9, 0, 1), false);
+  assert.equal(inspectFound('set', 0.19), true);
+  assert.equal(inspectFound('set', 0.2), false);
 });
 
 test('signalVisibility 경계값', () => {

@@ -381,7 +381,7 @@ export function startProctor({ renderer, ui, onEnd }) {
   function inspect(e) {
     inspectCd = TUNE.inspectCooldown;
     const n = stirNeighbors(e), h = addHeat(TUNE.heatInspect);
-    if (e.type === 'cheater' && rand() < inspectChance(e.device, t - (e.lastSight ?? -Infinity))) {
+    if (e.type === 'cheater' && rand() < inspectChance(e.device, t - (e.lastSight ?? -Infinity), e.seen)) {
       e.found = true; e.inspected = 'found';
       arrest(e, P.cap.found(e.id, C.deviceNames[e.device])); // 검사 성공 = 자동 검거(증거 hard)
     } else {

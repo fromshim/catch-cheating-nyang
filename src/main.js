@@ -4,7 +4,6 @@ import * as THREE from 'three';
 import { C, ORG } from './content.js';
 import { makeRenderer, buildClassroom, seatExaminees, animatePerson, autoResize } from './scene.js';
 import { startProctor } from './proctor.js';
-import { INSPECT_PROB } from './logic.js';
 import { startExaminee } from './examinee.js';
 
 const ui = document.getElementById('ui');
@@ -50,9 +49,10 @@ function menu() {
 }
 
 // headline: 맨 위 결과, title/body: 뉴스, memo: 경위서 안쪽 HTML, card: 현실 사례. 엔딩 종류와 무관하게 같은 틀을 쓴다.
-function endScreen({ news = '', headline, bad, title, stamp, body, stats, card, extra = '' }, again) {
+function endScreen({ news = '', headline, verdict = '', bad, title, stamp, body, stats, card, extra = '' }, again) {
   const U = C.endingUi;
   ui.innerHTML = `<div class="screen end"><h1 class="headline ${bad ? 'bad' : 'good'}">${headline}</h1>
+    ${verdict ? `<p class="verdict">${verdict}</p>` : ''}
     ${news ? `<div class="news">${news}</div>` : ''}
     <div class="end-wrap"><div class="end-main"><section class="paper newsbox"><h2><span class="flash">${U.newsTag}</span>${title}<span class="stamp">${stamp}</span></h2>${body}</section>
       <section class="paper memo"><h5>${U.memo}</h5>${stats}${extra}</section></div>${card}</div>
@@ -86,13 +86,15 @@ function playProctor() {
       endScreen({
         headline: ending.id === 'replaced' ? U.headline.replaced : lost ? U.headline.failed(lost) : U.headline.clear,
         bad: ending.id === 'replaced' || lost > 0,
+        verdict: U.verdict({ total: seats.filter((s) => s.type === 'cheater').length, nabbed: state.caught.length + state.released.length,
+          released: state.released.length, missed: lost - state.released.length, wrong: state.wrongCaught.length }),
         title: e.title, stamp: e.stamp,
         body: para(e.body).replace('{wrongLine}', U.wrongLine(state.wrongCaught.length)).replace('{meltdownLine}', U.meltdownLine(meltdowns)) +
           (ending.emp ? `<h3>${C.empPenalty.title}</h3><p>${C.empPenalty.body}</p>` : ''),
         stats: grid([[U.caught, state.caught.length], [U.wrong, state.wrongCaught.length], [U.missed, state.missed.length],
           [U.riskPct, `${Math.round(risk)}%`], [U.meltdownCount, meltdowns], [U.emptyCount, emptyInspects]]) +
           `<div class="more"><p>${U.released(state.released.length)}</p>
-          <p>${U.probTitle}: ${Object.entries(INSPECT_PROB).map(([d, p]) => `${C.deviceNames[d]} ${Math.round(p * 100)}%`).join(' · ')} (${U.probNote})</p>
+          <p>${U.probTitle}: ${U.probLine}</p>
           <p>${U.missedList}: ${list(state.missed, (m) => `${m.id}번(${C.deviceNames[m.device]})`)}</p></div>`,
         card: reality(e.realityCard),
         extra: seatMap(seats, portraits),
