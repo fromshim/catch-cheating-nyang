@@ -12,13 +12,17 @@
 .ticket h1 { font: 800 60px/1.1 var(--serif); letter-spacing: 0.06em; padding-left: 0.06em; margin: 4px 0 0; }
 .ticket .sub { color: var(--ink); opacity: 0.75; margin: 4px 0 22px; font-size: 14px; }
 .ticket .seal { position: absolute; top: 14px; right: 26px; width: 74px; height: 74px; border: 3px solid var(--seal); border-radius: 50%; color: var(--seal); display: flex; align-items: center; justify-content: center; text-align: center; font: 700 12px/1.2 var(--serif); transform: rotate(-12deg); opacity: 0.85; padding: 6px; }
-.ticket .modes { gap: 14px; }
-.ticket .modes button { flex: 1; width: auto; background: transparent; color: var(--ink); border: 1px solid var(--ink); border-radius: 0; padding: 14px; text-align: left; gap: 4px; }
-.ticket .modes button:hover { background: var(--jade); }
-.ticket .modes button:disabled { opacity: 0.45; cursor: not-allowed; background: transparent; border-style: dashed; }
-.ticket .modes small { font-size: 13px; opacity: 0.7; }
-.ticket .modes b { font: 700 24px var(--serif); }
-.ticket .modes span { color: var(--ink); font-size: 13px; }
+.ticket .exam { display: grid; grid-template-columns: 7em minmax(0, 1fr); gap: 1px; background: var(--ink); border: 1px solid var(--ink); }
+.ticket .exam > * { background: var(--paper); }
+.ticket .exam .lab { display: flex; align-items: center; padding: 0 14px; font: 700 14px var(--serif); letter-spacing: 0.15em; background: #e9e4d2; }
+.ticket .exam button { width: auto; border: 0; border-radius: 0; color: var(--ink); text-align: left; }
+.ticket .exam .pick { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 14px; padding: 14px 16px; }
+.ticket .exam .pick b { font: 800 26px var(--serif); letter-spacing: 0.2em; }
+.ticket .exam .pick small { font-size: 13px; opacity: 0.7; }
+.ticket .exam .pick::after { content: '▶'; margin-left: auto; align-self: center; font-size: 13px; opacity: 0.5; }
+.ticket .exam .pick:hover, .ticket .exam .pick:focus-visible { background: var(--jade); }
+.ticket .exam .pick:focus-visible { outline: 2px solid var(--ink); outline-offset: -4px; }
+.ticket .exam .lock { padding: 6px 16px; font-size: 13px; color: #1b1f2480; cursor: not-allowed; }
 .ticket .notice { position: static; margin: 18px 0 0; color: var(--ink); opacity: 0.7; font-size: 13px; text-align: left; }
 
 /* 엔딩 */
@@ -54,7 +58,9 @@
   .end-wrap { grid-template-columns: 1fr; }
   .end .headline { font-size: 40px; }
   .ticket h1 { font-size: 40px; }
-  .ticket .modes { flex-direction: column; }
+  .ticket .exam { grid-template-columns: 5.2em minmax(0, 1fr); }
+  .ticket .exam .lab { padding: 0 8px; font-size: 12px; letter-spacing: 0.05em; }
+  .ticket .exam .pick { padding: 10px 12px; }
   .ticket .seal { top: 10px; right: 12px; width: 60px; height: 60px; font-size: 12px; }
 }
 

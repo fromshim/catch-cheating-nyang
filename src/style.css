@@ -9,11 +9,10 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .screen { position: absolute; inset: 0; overflow: auto; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 32px; background: rgba(28, 24, 19, 0.88); text-align: center; }
 .menu h1 { font-size: 72px; margin: 0; letter-spacing: 0.3em; }
 .sub { color: #cdbf9f; margin: 8px 0 40px; }
-.modes { display: flex; gap: 20px; }
-.modes button, .choices button { background: #4a3f30; border: 1px solid #8a7753; border-radius: 6px; padding: 22px 30px; width: 240px; display: flex; flex-direction: column; gap: 8px; }
-.modes button:hover, .choices button:hover { background: #5d4f3b; }
-.modes b, .choices b { font-size: 24px; }
-.modes span, .choices span { font-size: 13px; color: #cdbf9f; }
+.choices button { background: #4a3f30; border: 1px solid #8a7753; border-radius: 6px; padding: 22px 30px; width: 240px; display: flex; flex-direction: column; gap: 8px; }
+.choices button:hover { background: #5d4f3b; }
+.choices b { font-size: 24px; }
+.choices span { font-size: 13px; color: #cdbf9f; }
 .notice { position: absolute; bottom: 20px; font-size: 13px; color: #a89c80; margin: 0; }
 .end > * { max-width: 640px; text-align: left; }
 .end h2 { font-size: 36px; margin: 0 0 12px; }
@@ -275,9 +274,10 @@ button { font: inherit; color: inherit; cursor: pointer; }
   .menu .ticket .org { margin-top: 6px; font-size: 12px; }
   .menu .ticket h1 { font-size: 32px; }
   .menu .ticket .sub { margin: 0 0 10px; font-size: 12px; }
-  .menu .ticket .modes button { padding: 8px 12px; }
-  .menu .ticket .modes b { font-size: 18px; }
-  .menu .ticket .modes span { font-size: 11px; }
+  .menu .ticket .exam .pick { padding: 6px 12px; }
+  .menu .ticket .exam .pick b { font-size: 18px; }
+  .menu .ticket .exam .pick small { font-size: 11px; }
+  .menu .ticket .exam .lock { padding: 3px 12px; font-size: 11px; }
   .menu .seal { width: 52px; height: 52px; font-size: 9px; top: 8px; right: 14px; }
   .menu .rec { font-size: 11px; top: 6px; left: 12px; }
   .notice { position: static; margin-top: 10px; }

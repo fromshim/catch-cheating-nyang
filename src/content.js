@@ -13,16 +13,14 @@ export const C = {
   menu: {
     title: '수능냥이를 잡아라',
     subtitle: `${EXAM} · 제2교시`,
+    category: '응시 구분',
     proctor: '감독관',
-    proctorDesc: '부정행위자를 찾아 적발한다',
-    examinee: '수험생',
-    examineeDesc: '기기로 답안을 완성한다',
+    proctorMeta: '제2교시 · 180초',
+    examineeRow: '☐ 수험생 (준비 중)', // 수험생 모드를 잠가 둔 동안의 줄
     ticket: '수 험 표',
     seal: SHORT_ORG,
     cam: '제2교시',
-    proctorTag: '180초',
     examineeTag: '120초',
-    examineeLocked: '준비 중', // 수험생 모드를 잠가 둔 동안 시간 대신 보이는 표시
     notice: '※ 실제 보도를 모티프로 한 풍자 게임입니다. 등장하는 인물과 상황은 가상입니다.',
   },
   board: [ORG, `20XX학년도 ${EXAM}`, '제2교시', '수험번호 확인 / 휴대전화·전자기기 소지 금지'],
