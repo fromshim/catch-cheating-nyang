@@ -135,7 +135,7 @@ export const TUNE = {
   boldAfter: 20,
   boldRamp: 20,
   boldMax: 1.6, // 대담 배율 상한
-  proximityDwell: 1, // 근접 긴장은 이 시간(초) 이상 머문 뒤부터 (판정은 proctor). 지나가기만 해도 조금 오른다
+  proximityDwell: 0, // 근접 긴장은 이 시간(초) 이상 머문 뒤부터 (판정은 proctor). 0 이면 곁에 있기만 해도 오른다
   empRadius: 4,
   redHandedWindow: 3, redHandedChance: 0.9, // 신호 목격 후 3초 안에 검사하면 발견 확률 90%
   inspectSeen: [0.55, 0.75], // 목격 1회, 2회 이상일 때 발견 확률
@@ -173,7 +173,8 @@ const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 
 // 개인 긴장 한 프레임 갱신. proctorDist = 감독관과의 수평 거리(m).
 export function stressStep(stress, { proctorDist, dt }) {
-  const up = proctorDist <= TUNE.proximityDist ? TUNE.stressProximityRate : 0;
+  // 가까울수록 빨리 오른다: 반경 끝에서 1배, 바로 옆에서 2배
+  const up = proctorDist <= TUNE.proximityDist ? TUNE.stressProximityRate * (2 - proctorDist / TUNE.proximityDist) : 0;
   return clamp(stress + (up - TUNE.stressDecay) * dt, 0, 100);
 }
 

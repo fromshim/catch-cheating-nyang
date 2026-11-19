@@ -163,7 +163,7 @@ export function startProctor({ renderer, ui, onEnd }) {
       <div class="row2"><section class="kk"><h4>${X.keys}</h4>${isTouch ? touchPad(labels) : kbd(labels, { compact: true })}</section>
       <section class="gz"><h4>${X.gaugesTitle}</h4>
         <div>${`<div class="lv">${GL.lv.risk.map((n) => fig(stack(+n, 0, P.replaceLine), n)).join('')}</div>`}<h5>${GL.risk[0]}</h5><p>${GL.risk[1]}</p></div>
-        <div><div class="lv">${fig(dial(0, 22, 84, P.dialLabels), GL.lv.heat[0])}${fig(dial(25, 0, 84, P.dialLabels), GL.lv.heat[1])}${fig(dial(80, 0, 84, P.dialLabels), GL.lv.heat[2])}</div><h5>${GL.heat[0]}</h5><p>${GL.heat[1]}</p></div>
+        <div><div class="lv">${fig(dial(0, 27, 84, P.dialLabels, TUNE.boldAfter), GL.lv.heat[0])}${fig(dial(25, 0, 84, P.dialLabels, TUNE.boldAfter), GL.lv.heat[1])}${fig(dial(80, 0, 84, P.dialLabels, TUNE.boldAfter), GL.lv.heat[2])}</div><h5>${GL.heat[0]}</h5><p>${GL.heat[1]}</p></div>
         <div><div class="lv">${fig(aimRing(40, 0, 52), GL.lv.emp[0])}${fig(aimRing(100, 0, 52), GL.lv.emp[1])}</div><h5>${GL.emp[0]}</h5><p>${GL.emp[1]}</p></div>
         <div><div class="lv">${Object.entries(P.levels).map(([k, n]) => fig(bust({ blush: FACE[k], slump: k === 'meltdown', w: 62 }), n)).join('')}</div><h5>${GL.tense[0]}</h5><p>${GL.tense[1]}</p></div>
       </section></div></div>`;
@@ -599,7 +599,7 @@ export function startProctor({ renderer, ui, onEnd }) {
     const sk = Math.ceil(risk / 10);
     if (sk !== stkKey) { $('p-stk').innerHTML = stack(risk, Math.max(0, sk - Math.max(0, stkKey || 0)), P.replaceLine); stkKey = sk; }
     const dk = `${Math.round(heat)}|${Math.floor(calmTime)}`;
-    if (dk !== dialKey) { dialKey = dk; $('p-dial').innerHTML = dial(heat, calmTime, 116, P.dialLabels); }
+    if (dk !== dialKey) { dialKey = dk; $('p-dial').innerHTML = dial(heat, calmTime, 116, P.dialLabels, TUNE.boldAfter); }
     const hn = calmTime > TUNE.boldAfter ? P.heatBold : calmTime > 0 ? P.heatCalm(Math.floor(calmTime), TUNE.boldAfter) : heat >= 50 ? P.heatShy : heat > 0 ? P.heatWatch : '';
     if ($('p-heat-n').textContent !== hn) $('p-heat-n').textContent = hn;
     qK.classList.toggle('rdy', emp >= 100); touch?.set('emp', { disabled: emp < 100 });

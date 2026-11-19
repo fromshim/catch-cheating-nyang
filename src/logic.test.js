@@ -76,6 +76,8 @@ const near = (a, b) => assert.ok(Math.abs(a - b) < 1e-9, `${a} != ${b}`);
 test('stressStep 감쇠·근접 가산·클램프', () => {
   near(stressStep(50, { proctorDist: 5, dt: 1 }), 49.2);
   near(stressStep(50, { proctorDist: 1.5, dt: 1 }), 54.2);
+  near(stressStep(50, { proctorDist: 0, dt: 1 }), 59.2); // 바로 옆은 2배
+  near(stressStep(50, { proctorDist: 0.75, dt: 1 }), 56.7);
   near(stressStep(50, { proctorDist: 1.6, dt: 1 }), 49.2);
   assert.equal(stressStep(0.5, { proctorDist: 5, dt: 1 }), 0);
   assert.equal(stressStep(99.5, { proctorDist: 0, dt: 1 }), 100);

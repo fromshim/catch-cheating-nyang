@@ -60,17 +60,17 @@ export function stack(v, fresh = 0, label = '교체') {
   return `<div class="hk-stk${v >= 90 ? ' danger' : ''}" data-label="${label}">${off.map((o, i) => `<s class="${i < n ? 'on' : ''}${i >= 8 ? ' hot' : ''}${i < n && i >= n - fresh ? ' new' : ''}" style="margin-left:${3 + o}px;margin-right:${3 - o}px;transform:rotate(${o / 2}deg)"></s>`).join('')}</div>`;
 }
 
-// 눈치 다이얼: x = 경계도(0~100), 조용하면 음수(-조용한 초, -35 까지). -15 아래가 "대담". 오른쪽 끝 글자는 소극적
-export function dial(heat, calm = 0, w = 120, labels = { bold: '대담', shy: '소극적' }) {
-  const x = heat > 0 ? heat : -Math.min(35, calm), cx = 60, cy = 62, R = 46;
-  const ang = (v) => (-90 + (v + 35) / 135 * 180) * Math.PI / 180;
+// 눈치 다이얼: x = 경계도(0~100), 조용하면 음수(-조용한 초, -(boldAt+20) 까지). -boldAt 아래가 "대담". 오른쪽 끝 글자는 소극적
+export function dial(heat, calm = 0, w = 120, labels = { bold: '대담', shy: '소극적' }, boldAt = 15) {
+  const lo = boldAt + 20, x = heat > 0 ? heat : -Math.min(lo, calm), cx = 60, cy = 62, R = 46;
+  const ang = (v) => (-90 + (v + lo) / (100 + lo) * 180) * Math.PI / 180;
   const pt = (v, r = R) => `${(cx + r * Math.sin(ang(v))).toFixed(1)} ${(cy - r * Math.cos(ang(v))).toFixed(1)}`;
   const arc = (a, b, stroke, sw) => `<path d="M${pt(a)} A${R} ${R} 0 0 1 ${pt(b)}" fill="none" stroke="${stroke}" stroke-width="${sw}"/>`;
   return `<svg class="hk-dial" width="${w}" height="${w * 72 / 120}" viewBox="0 0 120 72">
-    ${arc(-35, -15, '#e8c24a', 7)}${arc(-14, 0, '#efe6d255', 4)}${arc(1, 50, '#efe6d299', 4)}${arc(51, 100, '#F4F1E6', 4)}
+    ${arc(-lo, -boldAt, '#e8c24a', 7)}${arc(-boldAt + 1, 0, '#efe6d255', 4)}${arc(1, 50, '#efe6d299', 4)}${arc(51, 100, '#F4F1E6', 4)}
     <path d="M${pt(0, R - 7)} L${pt(0, R + 5)}" stroke="#F4F1E6" stroke-width="2"/>
     <text x="2" y="71">${labels.bold}</text><text x="118" y="71" text-anchor="end">${labels.shy}</text>
-    <path d="M${cx} ${cy} L${pt(x, R - 9)}" stroke="${x <= -15 ? '#e8c24a' : '#F4F1E6'}" stroke-width="3" stroke-linecap="round"/><circle cx="${cx}" cy="${cy}" r="4.5" fill="#F4F1E6"/></svg>`;
+    <path d="M${cx} ${cy} L${pt(x, R - 9)}" stroke="${x <= -boldAt ? '#e8c24a' : '#F4F1E6'}" stroke-width="3" stroke-linecap="round"/><circle cx="${cx}" cy="${cy}" r="4.5" fill="#F4F1E6"/></svg>`;
 }
 
 // 조준점 링: 바깥 = EMP 충전(종이색), 안쪽 = 검사 진행(호박색, 누르는 동안만)
