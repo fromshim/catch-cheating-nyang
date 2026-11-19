@@ -100,6 +100,7 @@ export const C = {
     aimHead: (id, face, level, seen, insp) => `<b>${id}번</b><i class="face f${face}"></i>${level}<span>목격 ${seen}</span><span>검사 ${insp}</span>`,
     aimFar: (id, seen) => `<b>${id}번</b><span>목격 ${seen}</span>`,
     hotHint: (s) => `포착! 지금 검사하면 확률 UP (${s}초)`,
+    hotRed: '빛 난다! 지금 적발하면 현행범',
     journal: '감독 일지',
     journalEmpty: '(아직 기록 없음)',
     // 목격: 진짜 신호가 보였을 때만(수상 표시). like: 닮은꼴·보이지 않은 신호의 중립 문구

@@ -602,7 +602,9 @@ export function startProctor({ renderer, ui, onEnd }) {
     const act = $('p-act'), hotEl = $('p-hot');
     const rc = reach();
     act.hidden = !rc;
-    hotEl.textContent = rc && hotSec(rc) ? P.hotHint(hotSec(rc)) : '';
+    // 빛이 켜져 있거나 막 꺼졌으면 F(현행범)를, 그다음 몇 초는 E(검사 확률 UP)를 권한다
+    const redNow = rc && ((rc.sig?.real && rc.sig.phase === 2 && rc.sig.sighted) || (rc.litEnd != null && t - rc.litEnd <= TUNE.redHandedArrest));
+    hotEl.textContent = redNow ? P.hotRed : rc && hotSec(rc) ? P.hotHint(hotSec(rc)) : '';
     $('p-act-e').classList.toggle('cool', inspectCd > 0);
     $('p-act-e').querySelector('span').textContent = inspectCd > 0 ? P.actHint.cool(Math.ceil(inspectCd)) : P.actHint.inspect;
 
