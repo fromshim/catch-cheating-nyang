@@ -6,13 +6,14 @@ export const isTouch = typeof window !== 'undefined' && (matchMedia('(pointer: c
 
 const LOOK = Math.PI;      // 화면 너비만큼 끌면 돌아가는 각도(rad). 약 180도
 const DEAD = 12, REACH = 50; // 조이스틱 데드존과 손잡이 최대 거리(px)
+const TAP_MOVE = 10, TAP_MS = 250; // 탭으로 치는 최대 이동(px)·시간(ms)
 const PITCH = 85 * Math.PI / 180;
 const eul = new Euler(0, 0, 0, 'YXZ');
 
 const press = (code, down) => dispatchEvent(new KeyboardEvent(down ? 'keydown' : 'keyup',
   { code, key: code === 'Space' ? ' ' : code.replace('Key', '').toLowerCase(), bubbles: true, cancelable: true }));
 
-export function mountTouch(root, { camera, buttons = [], onLook } = {}) {
+export function mountTouch(root, { camera, buttons = [], onLook, onTap } = {}) {
   const el = document.createElement('div');
   el.className = 'hk-t';
   const div = (cls, parent = el) => parent.appendChild(Object.assign(document.createElement('div'), { className: cls }));
@@ -20,13 +21,15 @@ export function mountTouch(root, { camera, buttons = [], onLook } = {}) {
   const on = (t, ev, fn) => { t.addEventListener(ev, fn); offs.push(() => t.removeEventListener(ev, fn)); };
   const key = (code, down) => { if (down === held.has(code)) return; down ? held.add(code) : held.delete(code); press(code, down); };
 
-  // 시점 이동: 오른쪽 절반
-  const lookZone = div('hk-t-zone hk-t-look'), looks = new Map();
+  div('hk-t-deck'); // 세로 화면에서만 보이는 조작판 배경(CSS)
+  // 시점 이동: 오른쪽 절반(세로 화면은 덱 위 전체)
+  const lookZone = div('hk-t-zone hk-t-look'), looks = new Map(), starts = new Map();
   const end = (m) => (e) => m.delete(e.pointerId);
-  on(lookZone, 'pointerdown', (e) => { lookZone.setPointerCapture(e.pointerId); looks.set(e.pointerId, e); });
+  on(lookZone, 'pointerdown', (e) => { lookZone.setPointerCapture(e.pointerId); looks.set(e.pointerId, e); starts.set(e.pointerId, { x: e.clientX, y: e.clientY, t: performance.now(), far: false }); });
   on(lookZone, 'pointermove', (e) => {
     const p = looks.get(e.pointerId); if (!p) return;
-    const dx = e.clientX - p.clientX, dy = e.clientY - p.clientY;
+    const dx = e.clientX - p.clientX, dy = e.clientY - p.clientY, s0 = starts.get(e.pointerId);
+    if (s0 && Math.hypot(e.clientX - s0.x, e.clientY - s0.y) > TAP_MOVE) s0.far = true;
     looks.set(e.pointerId, e);
     if (camera) {
       eul.setFromQuaternion(camera.quaternion);
@@ -35,7 +38,13 @@ export function mountTouch(root, { camera, buttons = [], onLook } = {}) {
     }
     onLook?.(dx, dy);
   });
-  on(lookZone, 'pointerup', end(looks)); on(lookZone, 'pointercancel', end(looks));
+  // 짧고 거의 안 움직인 손가락 = 탭
+  on(lookZone, 'pointerup', (e) => {
+    const s0 = starts.get(e.pointerId);
+    if (s0 && !s0.far && performance.now() - s0.t < TAP_MS) onTap?.(e.clientX, e.clientY);
+    looks.delete(e.pointerId); starts.delete(e.pointerId);
+  });
+  on(lookZone, 'pointercancel', (e) => { looks.delete(e.pointerId); starts.delete(e.pointerId); });
 
   // 이동: 왼쪽 아래, 떠다니는 조이스틱
   const moveZone = div('hk-t-zone hk-t-move'), base = div('hk-t-base'), knob = div('hk-t-knob', base);
@@ -66,6 +75,7 @@ export function mountTouch(root, { camera, buttons = [], onLook } = {}) {
   buttons.forEach((b) => {
     const i = b.code ? arc.indexOf(b) : top.indexOf(b), n = arc.length;
     const btn = div('hk-t-btn' + (b.code ? '' : ' hk-t-small')), lab = div('hk-t-lab', btn), bad = div('hk-t-badge', btn);
+    btn.dataset.id = b.id;
     lab.textContent = b.label || ''; els[b.id] = { btn, lab, bad };
     if (b.code) {
       const a = (n > 1 ? 8 + i * 74 / (n - 1) : 45) * Math.PI / 180;

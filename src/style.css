@@ -281,11 +281,32 @@ button { font: inherit; color: inherit; cursor: pointer; }
   .menu .rec { font-size: 11px; top: 6px; left: 12px; }
   .notice { position: static; margin-top: 10px; }
 }
-/* 세로 화면: 전체를 덮고 입력을 막는다 */
+/* 수험생 모드 세로 화면: 전체를 덮고 입력을 막는다(감독관 모드는 세로 덱을 쓴다) */
 @media (orientation: portrait) and (pointer: coarse) {
-  #rotate { position: fixed; inset: 0; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; background: #1d1a16; font-size: 22px; font-weight: 700; touch-action: none; }
-  #rotate p { margin: 0; }
-  #rotate i { width: 64px; height: 108px; border: 5px solid var(--hk-paper, #F4F1E6); border-radius: 12px; animation: rot 2.4s ease-in-out infinite; }
+  body.need-landscape #rotate { position: fixed; inset: 0; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; background: #1d1a16; font-size: 22px; font-weight: 700; touch-action: none; }
+  body.need-landscape #rotate p { margin: 0; }
+  body.need-landscape #rotate i { width: 64px; height: 108px; border: 5px solid var(--hk-paper, #F4F1E6); border-radius: 12px; animation: rot 2.4s ease-in-out infinite; }
   @keyframes rot { 0%, 25% { transform: rotate(0); } 60%, 100% { transform: rotate(-90deg); } }
 }
 @media (pointer: coarse) { .codex .kk { width: 410px; } .codex .kk .hk-kfw { --hk-scale: .42; } }
+
+/* ===== 모바일 세로(감독관 모드): 아래 덱 var(--deck) 위가 주 시야. proctor.js 가 body.pdeck 를 맞춘다 ===== */
+body.pdeck .cross { top: calc(50% - var(--deck) / 2); }
+body.pdeck .act { top: calc(50% - var(--deck) / 2 - 22px); }
+body.pdeck .bigstamp { top: calc(50% - var(--deck) / 2 - 110px); }
+body.pdeck .caps { bottom: calc(var(--deck) + 10px); max-width: 94vw; }
+body.pdeck .usefx { bottom: calc(var(--deck) + 10px); }
+body.pdeck .hud-center { top: max(4px, env(safe-area-inset-top)); }
+body.pdeck .gauges { top: calc(max(4px, env(safe-area-inset-top)) + 50px); transform: scale(.5); }
+body.pdeck .journal { top: calc(max(4px, env(safe-area-inset-top)) + 50px); right: 76px; width: calc(100vw - 218px); }
+body.pdeck .viewstate { top: calc(max(4px, env(safe-area-inset-top)) + 50px + 76px); }
+/* 시작 안내·도감: 줄바꿈으로 폭을 맞추고 길면 .overlay 가 세로로 민다 */
+body.pdeck .panel.start { zoom: .58; }
+body.pdeck .start .clues, body.pdeck .start .who { flex-wrap: wrap; justify-content: center; }
+body.pdeck .start .arr, body.pdeck .start .sep { display: none; }
+body.pdeck .start .clues { padding: 0 12px; }
+body.pdeck .start .kwrap { --hk-scale: .7 !important; }
+body.pdeck .overlay { overflow-x: hidden; }
+body.pdeck .panel.codex { zoom: .5; }
+body.pdeck .codex .row2, body.pdeck .codex .cards { flex-wrap: wrap; flex-direction: column; }
+body.pdeck .overlay:has(.panel.codex) { align-items: flex-start; overflow-y: auto; }

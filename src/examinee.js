@@ -96,6 +96,7 @@ export function startExaminee({ renderer, ui, onEnd }) {
   const portrait = matchMedia('(orientation: portrait)');
   const onRotate = (ev) => { if (isTouch && ev.matches && running && !ended) setRun(false); };
   portrait.addEventListener('change', onRotate);
+  document.body.classList.add('need-landscape');
   const onLockErr = () => { if (!ended && dev) setRun(true); };
   controls.addEventListener('lock', () => setRun(true));
   controls.addEventListener('unlock', () => { if (!ended && started) setRun(false); });
@@ -175,6 +176,7 @@ export function startExaminee({ renderer, ui, onEnd }) {
       cancelAnimationFrame(raf); ended = true; audio.stopAll(); stopResize();
       if (document.pointerLockElement) controls.unlock(); controls.dispose(); touch?.dispose();
       portrait.removeEventListener('change', onRotate);
+      document.body.classList.remove('need-landscape');
       removeEventListener('keydown', down); removeEventListener('keyup', up);
       document.removeEventListener('pointerlockerror', onLockErr);
       ui.innerHTML = '';

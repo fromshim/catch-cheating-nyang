@@ -25,10 +25,12 @@ export function makeRenderer(canvas) {
   return r;
 }
 
-export function autoResize(renderer, camera) {
+// layout(w, h) 을 주면 aspect·투영 갱신을 그쪽이 맡는다(세로 덱 화면용)
+export function autoResize(renderer, camera, layout) {
   const f = () => {
     const w = visualViewport?.width || innerWidth, h = visualViewport?.height || innerHeight; // 모바일 주소창 대응
     renderer.setSize(w, h);
+    if (layout) return layout(w, h);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
   };
