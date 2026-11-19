@@ -1,3 +1,5 @@
+/* 색 토큰: 인주색(--seal)은 종이 위, --seal-lit 은 어두운 바탕 위 경고. 기기 신호색은 목격한 빛에만 쓴다 */
+:root { --seal: #D7302A; --seal-lit: #ff7b72; --amber: #e8c24a; }
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; overflow: hidden; background: #1d1a16; color: #efe6d2; font-family: 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; word-break: keep-all; line-height: 1.6; }
 #c { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
@@ -20,13 +22,13 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .stats, .reality { background: #00000044; border-radius: 6px; padding: 12px 16px; margin-top: 16px; width: 100%; }
 .stats h4, .reality h4 { margin: 0 0 4px; color: #cdbf9f; }
 .reality small { color: #a89c80; }
-.news { background: #a33; padding: 8px 14px; font-weight: 700; margin-bottom: 14px; width: 100%; }
+.news { background: var(--seal); padding: 8px 14px; font-weight: 700; margin-bottom: 14px; width: 100%; }
 .btns { display: flex; gap: 12px; margin-top: 24px; }
 .btns button { padding: 10px 26px; background: #4a3f30; border: 1px solid #8a7753; border-radius: 6px; }
 .hud { position: absolute; inset: 0; pointer-events: none; }
 .hud-center { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); text-align: center; text-shadow: 0 2px 6px #000; display: flex; flex-direction: column; }
 .hud-center b { font-size: 44px; line-height: 1; font-variant-numeric: tabular-nums; }
-.hud-center b.low { color: #ff5a4a; animation: lowpulse 0.8s ease-in-out infinite; }
+.hud-center b.low { color: var(--seal-lit); animation: lowpulse 0.8s ease-in-out infinite; }
 .hud-center span { font-size: 20px; margin-top: 4px; }
 @keyframes lowpulse { 50% { transform: scale(1.18); opacity: 0.7; } }
 .vignette { position: absolute; inset: 0; opacity: 0; transition: opacity 0.2s; background: radial-gradient(transparent 55%, rgba(110, 0, 0, 0.6)); }
@@ -34,7 +36,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .emp-flash.go { animation: empf 0.08s ease-out; }
 @keyframes empf { from { opacity: 1; } to { opacity: 0; } }
 .ticker { position: absolute; left: 0; right: 0; bottom: 0; height: 28px; background: #1B1F24; overflow: hidden; display: flex; align-items: center; }
-.ticker-tag { position: relative; z-index: 1; flex: none; align-self: stretch; display: flex; align-items: center; padding: 0 12px; background: #c0261e; color: #fff; font-size: 13px; }
+.ticker-tag { position: relative; z-index: 1; flex: none; align-self: stretch; display: flex; align-items: center; padding: 0 12px; background: var(--seal); color: #fff; font-size: 13px; }
 .ticker-in { white-space: nowrap; animation: tick 90s linear infinite; font-size: 14px; line-height: 28px; }
 @keyframes tick { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 .overlay { position: absolute; inset: 0; background: rgba(20, 17, 13, 0.82); display: flex; align-items: center; justify-content: center; pointer-events: auto; cursor: pointer; }
@@ -42,14 +44,14 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .panel { max-width: 560px; text-align: center; padding: 20px; }
 .panel h2 { font-size: 30px; margin: 0 0 14px; }
 .panel p { line-height: 1.7; margin: 6px 0; }
-.cta { color: #e8d36a; margin-top: 18px !important; }
+.cta { color: var(--amber); margin-top: 18px !important; }
 .choices { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
 .choices button { width: auto; }
 .usefx { position: absolute; left: 50%; bottom: 56px; transform: translateX(-50%); color: #7fd6ff; background: #002a3acc; padding: 6px 14px; border-radius: 4px; }
 .examinee .overlay { cursor: default; }
 @keyframes stampin { from { opacity: 0; transform: rotate(-12deg) scale(2.4); } to { opacity: 1; transform: rotate(-12deg) scale(1); } }
 .viewstate { position: absolute; top: 96px; left: 50%; transform: translateX(-50%); padding: 3px 14px; border-radius: 4px; font-size: 14px; font-weight: 700; background: #666; }
-.viewstate.in { background: #c0261e; }
+.viewstate.in { background: var(--seal); }
 
 .panel .note { display: block; margin-top: 10px; font-size: 12px; color: #b8ab8a; }
 .overlay.over { background: rgba(120, 0, 0, 0.55); }
@@ -67,13 +69,13 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .g .row.col { flex-direction: column; align-items: center; justify-content: flex-end; gap: 0; }
 .g .num { font-size: 26px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
 .g .st { font-size: 13px; font-weight: 700; color: var(--paper); line-height: 1; margin-top: 2px; min-height: 13px; }
-.g .up { position: absolute; right: -4px; top: -4px; font-weight: 800; font-size: 18px; color: #ff8a6a; opacity: 0; }
+.g .up { position: absolute; right: -4px; top: -4px; font-weight: 800; font-size: 18px; color: var(--seal-lit); opacity: 0; }
 .g .up.up { animation: plus 1.2s ease-out; }
 @keyframes plus { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-14px); } }
 /* 게이지가 오를 때: 리스크 숫자는 붉게 커지며 깜빡, 경계도는 노랗게 깜빡 */
 .g .num, .g .st { transform-origin: 50% 100%; }
 #p-g-risk.hit .num { animation: riskhit 0.9s ease-out; }
-@keyframes riskhit { 0%, 40% { color: #ff5a3c; transform: scale(1.5); } 20% { color: #ff5a3c; transform: scale(1.25); opacity: 0.55; } 100% { color: inherit; transform: scale(1); } }
+@keyframes riskhit { 0%, 40% { color: var(--seal-lit); transform: scale(1.5); } 20% { color: var(--seal-lit); transform: scale(1.25); opacity: 0.55; } 100% { color: inherit; transform: scale(1); } }
 #p-g-heat.hit .st, #p-g-heat.hit label { animation: heathit 0.9s ease-out; }
 #p-g-heat.hit .hk-dial { animation: heatglow 0.9s ease-out; }
 @keyframes heathit { 0%, 40% { color: #e8c24a; transform: scale(1.15); } 20% { color: #e8c24a; opacity: 0.55; } 100% { transform: scale(1); } }
@@ -89,7 +91,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .journal li.sg-glasses::before { background: #6fdc95; }
 .journal li.co { color: #ffcf7a; }
 .journal li.co::before { background: #f0a020; }
-.journal li em { font-style: normal; color: #e8d36a; }
+.journal li em { font-style: normal; color: var(--amber); }
 .journal .empty { color: #888; }
 .cross { position: absolute; left: 50%; top: 50%; width: 64px; height: 64px; margin: -32px; }
 /* 관찰 카드: 조준한 학생 머리 위. 가운데 세로 기둥(학생 몸)에는 글자를 두지 않는다 */
