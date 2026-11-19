@@ -11,7 +11,7 @@
 .ticket .org { margin: 14px 0 0; font-size: 14px; text-align: left; }
 .ticket h1 { font: 800 60px/1.1 var(--serif); letter-spacing: 0.06em; padding-left: 0.06em; margin: 4px 0 0; }
 .ticket .sub { color: var(--ink); opacity: 0.75; margin: 4px 0 22px; font-size: 14px; }
-.seal { position: absolute; top: 14px; right: 26px; width: 74px; height: 74px; border: 3px solid var(--seal); border-radius: 50%; color: var(--seal); display: flex; align-items: center; justify-content: center; text-align: center; font: 700 12px/1.2 var(--serif); transform: rotate(-12deg); opacity: 0.85; padding: 6px; }
+.ticket .seal { position: absolute; top: 14px; right: 26px; width: 74px; height: 74px; border: 3px solid var(--seal); border-radius: 50%; color: var(--seal); display: flex; align-items: center; justify-content: center; text-align: center; font: 700 12px/1.2 var(--serif); transform: rotate(-12deg); opacity: 0.85; padding: 6px; }
 .ticket .modes { gap: 14px; }
 .ticket .modes button { flex: 1; width: auto; background: transparent; color: var(--ink); border: 1px solid var(--ink); border-radius: 0; padding: 14px; text-align: left; gap: 4px; }
 .ticket .modes button:hover { background: var(--jade); }
@@ -32,7 +32,9 @@
 .end .headline.bad { color: #ff7b72; }
 .end .verdict { margin: -6px 0 18px; max-width: 760px; text-align: center; font-size: 18px; line-height: 1.6; color: var(--paper); text-shadow: 0 2px 8px #000c; }
 .flash { margin-right: 10px; padding: 0 8px; vertical-align: middle; background: var(--seal); color: #fff; font: 700 14px var(--serif); letter-spacing: 0.1em; }
-.stamp { flex: none; border: 3px solid var(--seal); color: var(--seal); padding: 2px 10px; font: 800 20px var(--serif); transform: rotate(-8deg); opacity: 0.85; white-space: nowrap; }
+.end .stamp { flex: none; border: 3px solid var(--seal); color: var(--seal); padding: 2px 10px; font: 800 20px var(--serif); transform: rotate(-8deg); opacity: 0.85; white-space: nowrap; }
+/* 도감 카드 도장: 위치·각도는 style.css 의 .codex .stamp, 글꼴만 결과판 도장과 맞춘다 */
+.codex .stamp { font-family: var(--serif); white-space: nowrap; }
 .end .paper h3 { color: var(--seal); font-family: var(--serif); margin: 16px 0 0; }
 .end .paper p { text-align: left; }
 .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--ink); border: 1px solid var(--ink); margin: 18px 0 10px; }
@@ -53,7 +55,7 @@
   .end .headline { font-size: 40px; }
   .ticket h1 { font-size: 40px; }
   .ticket .modes { flex-direction: column; }
-  .seal { top: 10px; right: 12px; width: 60px; height: 60px; font-size: 12px; }
+  .ticket .seal { top: 10px; right: 12px; width: 60px; height: 60px; font-size: 12px; }
 }
 
 /* 엔딩: 좌석 배치도·범인 초상 */
@@ -63,10 +65,11 @@
 .seats { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
 .seat { position: relative; min-height: 64px; border: 1px solid var(--ink); padding: 4px 6px; display: flex; flex-direction: column; gap: 2px; font-size: 12px; background: #fff8; }
 .seat b { font: 700 16px var(--serif); font-variant-numeric: tabular-nums; }
-.seat .chip { align-self: flex-start; font-style: normal; font-size: 11px; padding: 0 5px; background: var(--ink); color: var(--paper); }
+.seat .chip { margin-top: auto; align-self: flex-start; font-style: normal; font-size: 11px; padding: 0 5px; background: var(--ink); color: var(--paper); }
+.seat .chip + .chip { margin-top: 0; }
 .seat .chip.hear { background: transparent; color: var(--ink); border: 1px solid var(--ink); }
 .seat.cheater { background: #d7302a1f; }
-.seat .mark { position: absolute; right: 4px; bottom: 3px; border: 2px solid var(--seal); color: var(--seal); font: 800 12px var(--serif); padding: 0 4px; transform: rotate(-8deg); background: var(--paper); }
+.seat .mark { position: absolute; right: 4px; top: 3px; border: 2px solid var(--seal); color: var(--seal); font: 800 12px var(--serif); padding: 0 4px; transform: rotate(-8deg); background: var(--paper); }
 .seat.wrong { border-color: var(--seal); }
 .seat.wrong::before, .seat.wrong::after { content: ''; position: absolute; left: 50%; top: 50%; width: 120%; height: 3px; background: var(--seal); opacity: 0.8; transform: translate(-50%, -50%) rotate(40deg); }
 .seat.wrong::after { transform: translate(-50%, -50%) rotate(-40deg); }

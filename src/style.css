@@ -48,7 +48,6 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .usefx { position: absolute; left: 50%; bottom: 56px; transform: translateX(-50%); color: #7fd6ff; background: #002a3acc; padding: 6px 14px; border-radius: 4px; }
 .examinee .overlay { cursor: default; }
 @keyframes stampin { from { opacity: 0; transform: rotate(-12deg) scale(2.4); } to { opacity: 1; transform: rotate(-12deg) scale(1); } }
-.chip { display: inline-block; margin-left: 8px; padding: 0 8px; background: #777; color: #eee; border-radius: 3px; font-style: normal; font-size: 12px; transform: rotate(-4deg); }
 .viewstate { position: absolute; top: 96px; left: 50%; transform: translateX(-50%); padding: 3px 14px; border-radius: 4px; font-size: 14px; font-weight: 700; background: #666; }
 .viewstate.in { background: #c0261e; }
 
