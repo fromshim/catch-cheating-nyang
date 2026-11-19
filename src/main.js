@@ -43,10 +43,10 @@ function menu() {
       <h1>${M.title}</h1><p class="sub">${M.subtitle}</p>
       <div class="modes">
         <button id="m-p"><small>${M.proctor}</small><b>${M.proctorTag}</b><span>${M.proctorDesc}</span></button>
-        <button id="m-e"><small>${M.examinee}</small><b>${M.examineeTag}</b><span>${M.examineeDesc}</span></button></div>
+        <button id="m-e" disabled><small>${M.examinee}</small><b>${M.examineeLocked}</b><span>${M.examineeDesc}</span></button></div>
       <p class="notice">${M.notice}</p></div></div>`;
   ui.querySelector('#m-p').onclick = playProctor;
-  ui.querySelector('#m-e').onclick = playExaminee;
+  // 수험생 모드는 기획이 정리될 때까지 잠가 둔다. 풀 때는 disabled 와 examineeLocked 를 되돌린다
 }
 
 // headline: 맨 위 결과, title/body: 뉴스, memo: 경위서 안쪽 HTML, card: 현실 사례. 엔딩 종류와 무관하게 같은 틀을 쓴다.

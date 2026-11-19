@@ -22,6 +22,7 @@ export const C = {
     cam: '제2교시',
     proctorTag: '180초',
     examineeTag: '120초',
+    examineeLocked: '준비 중', // 수험생 모드를 잠가 둔 동안 시간 대신 보이는 표시
     notice: '※ 실제 보도를 모티프로 한 풍자 게임입니다. 등장하는 인물과 상황은 가상입니다.',
   },
   board: [ORG, `20XX학년도 ${EXAM}`, '제2교시', '수험번호 확인 / 휴대전화·전자기기 소지 금지'],

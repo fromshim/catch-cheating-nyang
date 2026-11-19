@@ -15,6 +15,7 @@
 .ticket .modes { gap: 14px; }
 .ticket .modes button { flex: 1; width: auto; background: transparent; color: var(--ink); border: 1px solid var(--ink); border-radius: 0; padding: 14px; text-align: left; gap: 4px; }
 .ticket .modes button:hover { background: var(--jade); }
+.ticket .modes button:disabled { opacity: 0.45; cursor: not-allowed; background: transparent; border-style: dashed; }
 .ticket .modes small { font-size: 13px; opacity: 0.7; }
 .ticket .modes b { font: 700 24px var(--serif); }
 .ticket .modes span { color: var(--ink); font-size: 13px; }
