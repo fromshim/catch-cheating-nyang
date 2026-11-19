@@ -71,6 +71,14 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .g .up { position: absolute; right: -4px; top: -4px; font-weight: 800; font-size: 18px; color: #ff8a6a; opacity: 0; }
 .g .up.up { animation: plus 1.2s ease-out; }
 @keyframes plus { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-14px); } }
+/* 게이지가 오를 때: 리스크 숫자는 붉게 커지며 깜빡, 경계도는 노랗게 깜빡 */
+.g .num, .g .st { transform-origin: 50% 100%; }
+#p-g-risk.hit .num { animation: riskhit 0.9s ease-out; }
+@keyframes riskhit { 0%, 40% { color: #ff5a3c; transform: scale(1.5); } 20% { color: #ff5a3c; transform: scale(1.25); opacity: 0.55; } 100% { color: inherit; transform: scale(1); } }
+#p-g-heat.hit .st, #p-g-heat.hit label { animation: heathit 0.9s ease-out; }
+#p-g-heat.hit .hk-dial { animation: heatglow 0.9s ease-out; }
+@keyframes heathit { 0%, 40% { color: #e8c24a; transform: scale(1.15); } 20% { color: #e8c24a; opacity: 0.55; } 100% { transform: scale(1); } }
+@keyframes heatglow { 0%, 40% { filter: drop-shadow(0 0 6px #e8c24a); } 100% { filter: none; } }
 .journal { position: absolute; top: 14px; right: 14px; width: 236px; padding: 8px 12px; background: #000a; border-radius: 6px; font-size: 13px; }
 .journal h3 { margin: 0 0 4px; font-size: 12px; font-weight: 400; color: var(--mute); }
 .journal ul { list-style: none; margin: 0; padding: 0; }
@@ -217,7 +225,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .codex .lv > div { display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; font-size: 12px; color: var(--mute); }
 .codex .gz h5 { margin: 4px 0 1px; font-size: 14px; color: var(--paper); }
 .codex .gz p { margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--mute); }
-@media (prefers-reduced-motion: reduce) { .codex .win img.on, .comark, .obs .saw, .bigstamp.go, .g.danger { animation: none; } .bigstamp.go { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .codex .win img.on, .comark, .obs .saw, .bigstamp.go, .g.danger, .g.hit .num, .g.hit .st, .g.hit label, .g.hit .hk-dial { animation: none; } .bigstamp.go { opacity: 1; } }
 
 .hud.cover > :not(.overlay):not(.ticker):not(.vignette) { visibility: hidden; }
 

@@ -194,6 +194,8 @@ export function startProctor({ renderer, ui, onEnd }) {
   const restart = (el, cls) => { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); };
   const flash = (k, d) => {
     const pl = $('p-pl-' + k); pl.textContent = '+' + Math.round(d); restart(pl, 'up');
+    // 리스크는 붉게, 경계도는 노랗게 잠깐 깜빡인다(style.css .g.hit). 다이얼은 다시 그려지므로 끝나면 클래스를 뗀다
+    const g = $('p-g-' + k); restart(g, 'hit'); clearTimeout(g.hitT); g.hitT = setTimeout(() => g.classList.remove('hit'), 950);
   };
   const addHeat = (x) => { const d = Math.min(100, heat + x) - heat; heat += d; if (d > 0) flash('heat', d); return Math.round(d); };
   // 리스크가 오른 만큼 알리고(게이지 번쩍·비네트 펄스), 오른 정수 폭을 돌려준다
