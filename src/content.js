@@ -50,8 +50,8 @@ export const C = {
       keys: {
         esc: { t: '일시정지 · 도감' },
         emp: { t: 'EMP', c: '충전이 다 차면', d: ['반경 4m 안의 기기를 고장 낸다'] },
-        inspect: { t: '검사', c: '꾹 누른다 · 2m 안', d: ['많이 목격할수록, 빛을 본 직후면 확률 UP'] },
-        arrest: { t: '적발', c: '2m 안 · 되돌릴 수 없다', d: ['기기가 있으면 검거', '무고면 <em class="bad">학부모 리스크 +50</em>'] },
+        inspect: { t: '검사', c: '꾹 누른다 · 2m 안', d: ['의심만 갈 때. 꾹 누르는 동안 기기를 숨길 수 있음'] },
+        arrest: { t: '적발', c: '2m 안 · 되돌릴 수 없다', d: ['빛 나는 순간 잡으면 현행범(확실한 증거)', '무고면 <em class="bad">학부모 리스크 +50</em>'] },
         move: { t: '이동' },
         look: { t: '시점 이동' },
       },
@@ -60,8 +60,8 @@ export const C = {
       touch: {
         move: { t: '이동', c: '왼쪽 화면 밀기' },
         look: { t: '시점 이동', c: '화면 문지르기' },
-        inspect: { t: '검사', c: '길게 누르기' },
-        arrest: { t: '적발', d: ['기기가 있으면 검거', '무고면 <em class="bad">학부모 리스크 +50</em>'] },
+        inspect: { t: '검사', c: '길게 누르기', d: ['의심만 갈 때. 누르는 동안 기기를 숨길 수 있음'] },
+        arrest: { t: '적발', d: ['빛 나는 순간 잡으면 현행범(확실한 증거)', '무고면 <em class="bad">학부모 리스크 +50</em>'] },
         emp: { t: 'EMP', c: '충전이 다 차면' },
         pause: { t: '일시정지 · 도감' },
       },
@@ -83,7 +83,7 @@ export const C = {
       meltdown: ['엄..........'],
     },
     actHint: { inspect: '검사', arrest: '적발', cool: (s) => `검사 ${s}초 뒤` },
-    stamp: { caught: '검거', wrong: '오적발' },
+    stamp: { caught: '검거', redHanded: '현행범', wrong: '오적발' },
     mini: { esc: '도감', q: 'EMP', e: '검사', f: '적발', used: 'EMP 사용' },
     risk: '학부모 리스크',
     heat: '교실 경계도',
@@ -132,7 +132,7 @@ export const C = {
       found: (id, dev) => `증거 발견! ${id}번 ${dev}, 바로 검거합니다`,
       meltdown: (id, risk) => ({ head: `${id}번 멘붕`, chips: [{ t: `학부모 리스크 +${risk}`, k: 'bad' }] }),
       bold: { head: '교실이 조용하다', chips: [{ t: '범인이 대담해진다' }] },
-      caughtRight: (id, heat, n, evidence) => ({ head: `${id}번 검거`, chips: [{ t: 'EMP +25' }, { t: `경계도 +${heat}` }, n && { t: `주변 ${n}명 긴장` },
+      caughtRight: (id, heat, n, evidence, emp = 25, redHanded = false) => ({ head: redHanded ? `현행범 검거! ${id}번` : `${id}번 검거`, chips: [{ t: `EMP +${emp}` }, { t: `경계도 +${heat}` }, n && { t: `주변 ${n}명 긴장` },
         evidence !== 'hard' && { t: evidence === 'soft' ? SOFT : '증거 없음, 판정은 시험 후', k: 'mute' }] }),
       caughtWrong: (id, risk, heat, n) => ({ head: `${id}번은 무고했다`, chips: [{ t: `학부모 리스크 +${risk}`, k: 'bad' }, { t: `경계도 +${heat}` }, n && { t: `주변 ${n}명 긴장` }] }),
       emp: (kind, heat, n) => ({ head: `EMP 발사 · ${n}명이 움찔`, chips: [{ t: `경계도 +${heat}` }, kind === 'hearing' && { t: '보청기 손상', k: 'bad' }] }),
@@ -288,7 +288,7 @@ export const C = {
     wrongLine: (n) => (n ? `오적발로 내보낸 수험생은 ${n}명이었다.` : '오적발은 없었지만 빈 가방 검사에 대한 항의가 쌓였다.'),
     meltdownLine: (n) => (n ? `멘붕한 수험생은 ${n}명이었다.` : '멘붕한 수험생은 없었다.'),
     probTitle: '소지품 검사 발견 확률',
-    probLine: '목격 없음 20% · 목격 1회 55% · 2회 이상 75% · 빛을 본 직후 90%',
+    probLine: '목격 없음 20% · 목격 1회 55% · 2회 이상 75% · 빛을 본 직후 70%',
     // 결과 첫 문장: 몇 명 잡았고, 증거 없이 잡은 범인이 어떻게 빠져나갔는지
     verdict: ({ total, nabbed, released, missed, wrong }) => [
       nabbed ? `당신은 범인 ${total}명 중 ${nabbed}명을 잡았${released ? `지만, 증거 없이 잡은 ${released}명이 퇴실하는 길에 기기를 파기해 무혐의로 풀려났습니다.` : '습니다.'}` : '당신은 범인을 한 명도 잡지 못했습니다.',

@@ -51,6 +51,10 @@ test('allCaught 경계', () => {
 
 test('TUNE 신규 값', () => {
   assert.equal(TUNE.inspectHold, 1.2);
+  assert.equal(TUNE.redHandedChance, 0.7);
+  assert.equal(TUNE.redHandedArrest, 1.0);
+  assert.equal(TUNE.empArrest, 25);
+  assert.equal(TUNE.empArrestRedHanded, 40);
   assert.equal(TUNE.buttonGlowMax, 0.55);
 });
 
@@ -177,11 +181,11 @@ test('inspectChance 목격 횟수·직후 단계', () => {
   near(inspectChance('set', Infinity, 1), 0.55);
   near(inspectChance('set', 10, 2), 0.75);
   near(inspectChance('glasses', 10, 5), 0.75);
-  near(inspectChance('set', 3, 1), 0.9);
+  near(inspectChance('set', 3, 1), 0.7);
   near(inspectChance('set', 3.01, 1), 0.55);
-  near(inspectChance('glasses', 0, 0), 0.9);
-  assert.equal(inspectFound('set', 0.89, 0, 1), true);
-  assert.equal(inspectFound('set', 0.9, 0, 1), false);
+  near(inspectChance('glasses', 0, 0), 0.7);
+  assert.equal(inspectFound('set', 0.69, 0, 1), true);
+  assert.equal(inspectFound('set', 0.7, 0, 1), false);
   assert.equal(inspectFound('set', 0.19), true);
   assert.equal(inspectFound('set', 0.2), false);
 });

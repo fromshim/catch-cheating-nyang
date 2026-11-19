@@ -137,7 +137,9 @@ export const TUNE = {
   boldMax: 1.6, // 대담 배율 상한
   proximityDwell: 0, // 근접 긴장은 이 시간(초) 이상 머문 뒤부터 (판정은 proctor). 0 이면 곁에 있기만 해도 오른다
   empRadius: 4,
-  redHandedWindow: 3, redHandedChance: 0.9, // 신호 목격 후 3초 안에 검사하면 발견 확률 90%
+  redHandedWindow: 3, redHandedChance: 0.7, // 신호 목격 후 3초 안에 검사하면 발견 확률 70%
+  redHandedArrest: 1.0, // 목격한 발광이 끝나고 이 시간(초) 안에 F 로 잡으면 현행범
+  empArrest: 25, empArrestRedHanded: 40, // 검거 시 EMP 충전량(현행범은 더 많이)
   inspectSeen: [0.55, 0.75], // 목격 1회, 2회 이상일 때 발견 확률
   doneTellMul: 1 / 3, // 베끼기를 끝낸 범인의 신호 빈도 배율
   sightDist: 5, glowDist: 7, // 일지 기록 최대 거리, 발광이 보이는 최대 거리

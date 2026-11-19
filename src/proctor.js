@@ -305,7 +305,7 @@ export function startProctor({ renderer, ui, onEnd }) {
           sg.phase = 2; sg.until = t + TUNE.signalDur[sg.kind]; sg.name = sg.then; sg.neutral = false;
           if (sg.then) e.person.setGesture(sg.then, t, TUNE.signalDur[sg.kind]);
           coLook(e, sg.kind);
-        } else { e.sig = null; if (sg.real) e.person.setGlow(kind, 0); continue; }
+        } else { if (sg.real && sg.phase === 2 && sg.sighted) e.litEnd = t; e.sig = null; if (sg.real) e.person.setGlow(kind, 0); continue; }
       }
       if (!sg) continue;
       const lit = sg.real && sg.phase === 2; // 1단계 몸짓은 무고와 구분되지 않는다
@@ -351,20 +351,24 @@ export function startProctor({ renderer, ui, onEnd }) {
   }
 
   // 증거 3단계: 기기 발견·EMP 반응 = hard, 목격만 = soft
-  const evidenceOf = (e) => (e.found || e.empFlag ? 'hard' : e.seen >= 1 ? 'soft' : 'none');
+  const evidenceOf = (e) => (e.found || e.empFlag || e.redHanded ? 'hard' : e.seen >= 1 ? 'soft' : 'none');
   function say(e, key) {
     const el = document.createElement('div');
     el.className = 'say'; el.textContent = pick(rand, P.say[key]);
     $('p-marks').append(el); says.push({ e, el, life: 1.8 });
   }
-  function arrest(e, head) { // head: 검사 성공으로 검거될 때 토스트 제목(토스트를 하나로 합친다)
+  function arrest(e, head, viaF) { // head: 검사 성공으로 검거될 때 토스트 제목(토스트를 하나로 합친다)
     const n = stirNeighbors(e);
     if (e.type === 'cheater') {
       state.caught.push(e.id);
       if (allCaught(ex, state.caught)) allClear();
-      emp = Math.min(100, emp + 25);
+      // 현행범: F 로 잡을 때 발광 중(목격함)이거나 목격한 발광이 끝난 지 redHandedArrest 초 이내
+      const sg = e.sig;
+      if (viaF && ((sg?.real && sg.phase === 2 && sg.sighted) || (e.litEnd != null && t - e.litEnd <= TUNE.redHandedArrest))) e.redHanded = true;
+      const gain = e.redHanded ? TUNE.empArrestRedHanded : TUNE.empArrest;
+      emp = Math.min(100, emp + gain);
       const ev = evidenceOf(e);
-      cap({ ...P.cap.caughtRight(e.id, addHeat(TUNE.heatArrest), n, ev), ...(head && { head }), stamp: P.stamp.caught });
+      cap({ ...P.cap.caughtRight(e.id, addHeat(TUNE.heatArrest), n, ev, gain, e.redHanded), ...(head && { head }), stamp: e.redHanded ? P.stamp.redHanded : P.stamp.caught });
       say(e, 'caught');
     } else {
       state.wrongCaught.push({ id: e.id, type: e.type });
@@ -432,7 +436,7 @@ export function startProctor({ renderer, ui, onEnd }) {
     if (!down || !running || ended || ev.repeat) return;
     if (ev.code === 'KeyF') {
       const e = reach();
-      if (e) arrest(e);
+      if (e) arrest(e, undefined, true);
     }
     if (ev.code === 'KeyQ' && emp >= 100) fireEmp();
   };
@@ -523,6 +527,9 @@ export function startProctor({ renderer, ui, onEnd }) {
     // 소지품 검사: E 홀드 (쿨타임 중엔 불가)
     inspectCd = Math.max(0, inspectCd - dt);
     const near = inspectCd > 0 ? null : reach();
+    if (keys.KeyE && near && inspectId === null && near.sig?.real && near.sig.phase === 2) { // 홀드를 시작한 순간 발광 중이면 기기를 숨긴다
+      near.person.setGlow(GLOW[near.sig.kind], 0); near.sig = null;
+    }
     if (keys.KeyE && near && near.id === inspectId) {
       inspectT += dt;
       if (inspectT >= TUNE.inspectHold) { inspect(near); inspectT = 0; keys.KeyE = false; }
